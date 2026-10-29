@@ -1,0 +1,119 @@
+# Ferret
+
+Ferret is a .NET library and CLI for searching text and markdown knowledge bases. It is a drop-in replacement for ripgrep that adds ranked lexical (BM25) search, with semantic and hybrid search planned.
+
+Ferret is primarily a library for .NET developers, with the CLI as a thin front end over it. It is not trying to replace [ck](https://github.com/BeaconBay/ck), which is more full featured. It is a slight alternative with different search details (BM25 lexical arm, file-level rollup, bounded output) and a first-class .NET API.
+
+Status of features is marked **Planned** (designed, not built) or **Future** (direction only). Detail lives in `research/`.
+
+## Problem space
+
+### Grep finds matches, not answers
+
+ripgrep is fast and precise, but it returns every match in file order. On a documentation or knowledge corpus, a query like `retries for AWS calls` returns a flat, unranked list. The relevant file may be buried below a README that quotes the query verbatim, or a generated `index.md`.
+
+### Agents need bounded, ranked output
+
+Tools such as Eru expose search to LLM agents through an MCP server. Agents have limited context, so they need:
+
+- the most relevant files first,
+- a bounded result size (limit, capped excerpts, a truncation flag),
+- file paths plus matching lines, so they can read on demand.
+
+Unranked OR-matching with unbounded output wastes context and buries the answer.
+
+### Lexical and semantic search fail differently
+
+- **Lexical (BM25)** is exact and predictable, but misses paraphrases and needs term overlap.
+- **Semantic (embeddings)** handles meaning, but blurs exact terms. In the PoC, "mock time unit tests" pulled in "timeouts" and "usage" chunks, and "retries for AWS calls" returned unrelated rows.
+- **Existing tools** (ck) cover parts of this, but not all. Its hybrid mode uses a regex keyword arm instead of BM25, it returns very few results under its default threshold, and it took 4.5 minutes to index a repo that a markdown-only index handled in seconds.
+
+### Constraints
+
+- Must not break muscle memory: plain `ferret <pattern>` behaves like `rg`.
+- Must work offline, with no service to run.
+- Lexical-only installs must stay small. The semantic ranker adds about 80 MB per platform (model plus native ONNX Runtime), so it cannot be a hard dependency.
+- Indexes are disposable caches that rebuild lazily.
+
+## Target users
+
+- .NET developers and applications that want to embed ranked search through the library. This is the primary audience.
+- LLM agents and tools (Eru, MCP clients) that need ranked, bounded knowledge retrieval.
+- Developers searching docs and notes from the terminal, especially in the .NET ecosystem. `ck` is still the more feature full option and is amazing software.
+
+## Features
+
+### Plain search (ripgrep-compatible)
+
+- `ferret <pattern> [path...]` matches regex or literal text, unranked, in file and line order.
+- Same core flags, output format and exit codes as `rg` (0 on match, 1 on none).
+- Ignore handling follows ripgrep conventions (`.gitignore`, `.ignore`), plus `.ferretignore`.
+- No score, no limit, no ranking in this mode.
+
+### Ranked lexical search (BM25) — Planned
+
+Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
+
+- BM25 over a token index (`K1 = 1.2`, `B = 0.75`, non-negative IDF), deterministic ordering with path tie-break.
+- OR semantics, made safe by ranking: more and rarer matched terms rise to the top.
+- Boosts for query terms in path or title, README files and concept files, kept as named constants.
+- Stop-word removal and light suffix stemming (`mock` matches `mocked`), applied identically at index and query time.
+- Corpus stats come from the whole indexed corpus, so scores are comparable across filtered queries.
+- Tag filtering (AND) narrows candidates first, then BM25 ranks them.
+- Ferret-only flags: `--limit` (max files), score column or field. These use names ripgrep does not, and `--limit` never reuses `-m/--max-count`.
+- Output formats: text, table, json, and `--jsonl` for agents.
+
+### Ignore globs — Planned
+
+- Nothing is excluded by default.
+- `.ferretignore` at the knowledge root: gitignore-style, `!` re-includes, additive to `.gitignore`.
+- The library accepts patterns and does no file I/O. Ignored files are dropped before corpus stats are computed, so they never skew `df` or `avgdl`.
+- `--exclude`, `--no-ignore` and `--no-ferretignore` for per-run control.
+
+### Library
+
+- One ranked search engine behind both front ends.
+- Pure BM25 scorer module, unit-testable without I/O.
+- Ranking sits behind a seam, `Ranker = Query -> Candidate list -> ScoredDoc list`, so other rankers can be added.
+
+### Index and cache
+
+- Stats and index are a disposable cache, built on first use and rebuilt when the index version changes.
+- Cache key includes ignore patterns and the normaliser version.
+- Incremental by file hash where feasible.
+
+### Semantic search — Future
+
+- Embedded ONNX model (`bge-small-en-v1.5`, int8), chunked by heading, then paragraph, then line or word.
+- Chunk hits roll up to files with `max` (best chunk per file) over a full scan. That chunk is the excerpt. Sum-based rollups are rejected because they favour long files.
+- Chunker fixes needed first: merge heading-only and front-matter chunks, or prefix chunks with a title and section breadcrumb.
+- First index is built off the query path.
+- Ships as a separate package or on-demand model download. Lexical-only builds work without it.
+- One fixed model for now. Choosing or switching models (for example a larger or code-specialised one, with an index rebuild) might come later.
+
+### Hybrid search — Future
+
+- BM25 and semantic rankings fused with reciprocal rank fusion (`rrf(d) = Σ 1 / (k + rank)`, k = 60, optional per-ranker weights). No score normalisation is needed.
+- Each ranker contributes its top 50-100 before fusion.
+- Opt-in until an eval on real content shows hybrid beating BM25.
+
+## Non-goals
+
+- Re-ranking ck results.
+- Query syntax (phrases, field filters, negation).
+- Score thresholds (BM25 scores are unbounded and corpus-dependent).
+- Whole-function retrieval via tree-sitter.
+- ANN indexes, unless a corpus passes roughly 100k chunks.
+- Pagination cursors, for now.
+
+## Open questions
+
+- Boost magnitudes need tuning on a real corpus.
+- Stemmer conservatism versus false matches.
+- Glob library choice (use an existing gitignore-compatible matcher).
+- Whether hybrid beats BM25 on real content. The next experiment is BM25, semantic and RRF on the PoC queries and labels.
+
+## Related docs
+
+- [BM25 ranked search design](../research/bm25-ranked-search.md)
+- [Chunks vs files findings](../research/chunks-vs-files-findings.md)
