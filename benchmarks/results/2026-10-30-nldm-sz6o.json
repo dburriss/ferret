@@ -1,0 +1,149 @@
+{
+  "hyperfine": "hyperfine 2.0.0",
+  "os": "macOS 26.7.1",
+  "results": [
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "mutex_lock",
+      "timings": [
+        {
+          "mean_ms": 10.037116900000001,
+          "median_ms": 9.49825,
+          "min_ms": 8.609209000000002,
+          "peak_rss_mib": 6.0625,
+          "stddev_ms": 1.418458744813887,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 84.61056660000003,
+          "median_ms": 84.4864585,
+          "min_ms": 83.136792,
+          "peak_rss_mib": 57.5,
+          "stddev_ms": 1.189234421743126,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "TODO",
+      "timings": [
+        {
+          "mean_ms": 10.9011875,
+          "median_ms": 10.854187500000002,
+          "min_ms": 10.171667000000001,
+          "peak_rss_mib": 6.046875,
+          "stddev_ms": 0.562113559548296,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 84.3789834,
+          "median_ms": 84.40610400000001,
+          "min_ms": 82.62525000000001,
+          "peak_rss_mib": 57.6328125,
+          "stddev_ms": 1.2965673448772495,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-F"
+      ],
+      "pattern": "struct file_operations",
+      "timings": [
+        {
+          "mean_ms": 9.737370899999998,
+          "median_ms": 9.48425,
+          "min_ms": 9.239292,
+          "peak_rss_mib": 6.0546875,
+          "stddev_ms": 0.7515797196274069,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 86.4332457,
+          "median_ms": 84.27460450000001,
+          "min_ms": 82.812625,
+          "peak_rss_mib": 57.3984375,
+          "stddev_ms": 4.2113484279241655,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "[A-Z]{5}_[A-Z]{5}",
+      "timings": [
+        {
+          "mean_ms": 9.5639083,
+          "median_ms": 9.1204795,
+          "min_ms": 7.571916000000001,
+          "peak_rss_mib": 6.046875,
+          "stddev_ms": 1.4021019459882407,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 87.3601292,
+          "median_ms": 85.53393750000001,
+          "min_ms": 83.30187500000001,
+          "peak_rss_mib": 57.5078125,
+          "stddev_ms": 4.265943723594705,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-i"
+      ],
+      "pattern": "hello",
+      "timings": [
+        {
+          "mean_ms": 10.403170600000001,
+          "median_ms": 10.3254375,
+          "min_ms": 9.877708,
+          "peak_rss_mib": 6.0625,
+          "stddev_ms": 0.4378495206512036,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 82.8157499,
+          "median_ms": 82.5255205,
+          "min_ms": 79.545459,
+          "peak_rss_mib": 57.4609375,
+          "stddev_ms": 2.5023482545605242,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "zzzznomatch",
+      "timings": [
+        {
+          "mean_ms": 9.8771041,
+          "median_ms": 9.723229,
+          "min_ms": 7.4244580000000004,
+          "peak_rss_mib": 5.9765625,
+          "stddev_ms": 1.5858824924624744,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 83.66901229999999,
+          "median_ms": 83.32020800000001,
+          "min_ms": 81.654083,
+          "peak_rss_mib": 57.53125,
+          "stddev_ms": 1.4944896534478513,
+          "tool": "ferret"
+        }
+      ]
+    }
+  ],
+  "runs": 10
+}

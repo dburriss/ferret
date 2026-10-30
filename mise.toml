@@ -18,7 +18,7 @@ hide = true
 run = "dotnet build -c Release src/Ferret.Cli"
 
 [tasks."eval:relevance"]
-description = "nDCG/recall/MRR for a fetched dataset (arg: scifact|nfcorpus)"
+description = "nDCG/recall/MRR vs benchmarks/relevance-baseline.json (args: [scifact|nfcorpus|fsharp-docs] [--update], default all)"
 depends = ["build:ferret"]
 run = "dotnet fsi scripts/eval-relevance.fsx"
 
@@ -28,8 +28,8 @@ depends = ["build:cli"]
 run = "dotnet fsi benchmarks/run.fsx"
 
 [tasks.bootstrap]
-description = "Set up the repo: restore packages and fetch the BEIR test corpora (no multi-GB perf clones)"
-depends = ["restore", "fetch:corpus"]
+description = "Set up the repo: restore packages and fetch the BEIR and F# docs test corpora (no multi-GB perf clones)"
+depends = ["restore", "fetch:corpus", "fetch:fsharp-docs"]
 
 [tasks."bootstrap:all"]
 description = "bootstrap plus the multi-GB perf clones"
@@ -38,3 +38,7 @@ depends = ["bootstrap", "fetch:perf"]
 [tasks.restore]
 hide = true
 run = "dotnet restore"
+
+[tasks."fetch:fsharp-docs"]
+description = "Fetch the F# docs (dotnet/docs, docs/fsharp, pinned) into corpus/fsharp-docs/"
+run = "dotnet fsi scripts/fetch-fsharp-docs.fsx"

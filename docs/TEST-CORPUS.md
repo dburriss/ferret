@@ -66,7 +66,7 @@ Fetched by a script into a gitignored `corpus/` directory. Data is JSONL, so the
 |---|---|---|
 | BEIR SciFact | ~5k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.67. |
 | BEIR NFCorpus | ~3.6k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.32. |
-| CodeSearchNet | large | Deferred past v1. Code plus natural-language queries, closer to Ferret's real use. Add once the eval harness works. |
+| F# docs (dotnet/docs `docs/fsharp`) | ~160 md | Real markdown documentation: headings, code fences, front matter. Hand-written queries and graded labels, checked in. No published baseline; the number is only a regression reference. |
 | Cranfield, CACM | ~1.4k, ~3.2k | Tiny classics for fast iteration. |
 
 Tooling: `.fsx` scripts. They download the BEIR zips, write one file per doc, and compute nDCG@10, recall and MRR from the qrels. The metrics are small enough to write ourselves.
@@ -106,7 +106,8 @@ benchmarks/
 
 - Smoke: built. 18 exact and 4 weighted queries asserted, 4 semantic recorded.
 - Compat: built, 16 cases. Two known gaps vs rg: CRLF lines lose the `\r` (`crlf/gap`), and UTF-16 files with a BOM are skipped as binary (`utf16-bom/gap`).
-- Relevance: built. SciFact nDCG@10 is 0.662 (published BM25 ≈ 0.665, from memory, not re-verified), recall@100 0.886, MRR@10 0.628, in about 80s. NFCorpus not yet run.
+- Relevance: built. SciFact nDCG@10 is 0.662 (published BM25 ≈ 0.665, from memory, not re-verified), recall@100 0.886, MRR@10 0.628, in about 80s. NFCorpus nDCG@10 is 0.308 (published BM25 ≈ 0.32), recall@100 0.237, MRR@10 0.515, in about 57s. Baselines are in `benchmarks/relevance-baseline.json`; the eval exits 1 if nDCG@10 drops more than 0.01 below them. Run with `--update` to record new baselines after an intentional change; the baseline file is committed, so its git history is the record of accepted scores. Every run also writes a timestamped `benchmarks/results/relevance-<timestamp>-<sha>.json` (commit, dirty flag, per-dataset and per-type scores) for comparing runs over time.
+- F# docs: 42 queries (20 keyword, 16 question, 6 exact-token), pinned to dotnet/docs commit `faf8e5d`. nDCG@10 0.816 overall (keyword 0.955, exact 0.917, question 0.606), MRR@10 0.845, recall@100 0.984, in about 1s. Labels are graded 2 (canonical page) or 1 (also relevant) and were written by hand before running ferret; the question slice is where lexical search is weakest, so it is the reference point for semantic and hybrid.
 - Perf: scripts built and smoke-tested on a tiny directory. `run.fsx` drives `hyperfine` (pinned in `mise.toml`) and records mean, median, min, stddev and peak RSS. Warm cache only, since a cold run needs `sudo purge`. The Linux and dotnet/runtime clones have not been run yet.
 
 ## Decisions

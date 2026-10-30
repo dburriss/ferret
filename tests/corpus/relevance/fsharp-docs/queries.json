@@ -1,0 +1,359 @@
+[
+ {
+  "id": "q01",
+  "type": "keyword",
+  "query": "discriminated unions",
+  "relevant": {
+   "language-reference/discriminated-unions.md": 2,
+   "language-reference/pattern-matching.md": 1
+  }
+ },
+ {
+  "id": "q02",
+  "type": "keyword",
+  "query": "record copy and update",
+  "relevant": {
+   "language-reference/copy-and-update-record-expressions.md": 2,
+   "language-reference/records.md": 1
+  }
+ },
+ {
+  "id": "q03",
+  "type": "keyword",
+  "query": "units of measure",
+  "relevant": {
+   "language-reference/units-of-measure.md": 2
+  }
+ },
+ {
+  "id": "q04",
+  "type": "keyword",
+  "query": "active patterns",
+  "relevant": {
+   "language-reference/active-patterns.md": 2
+  }
+ },
+ {
+  "id": "q05",
+  "type": "keyword",
+  "query": "computation expressions",
+  "relevant": {
+   "language-reference/computation-expressions.md": 2,
+   "language-reference/async-expressions.md": 1,
+   "language-reference/task-expressions.md": 1
+  }
+ },
+ {
+  "id": "q06",
+  "type": "keyword",
+  "query": "statically resolved type parameters",
+  "relevant": {
+   "language-reference/generics/statically-resolved-type-parameters.md": 2,
+   "language-reference/functions/inline-functions.md": 1
+  }
+ },
+ {
+  "id": "q07",
+  "type": "keyword",
+  "query": "type providers",
+  "relevant": {
+   "tutorials/type-providers/index.md": 2,
+   "tutorials/type-providers/creating-a-type-provider.md": 1
+  }
+ },
+ {
+  "id": "q08",
+  "type": "keyword",
+  "query": "query expressions",
+  "relevant": {
+   "language-reference/query-expressions.md": 2
+  }
+ },
+ {
+  "id": "q09",
+  "type": "keyword",
+  "query": "reference cells",
+  "relevant": {
+   "language-reference/reference-cells.md": 2
+  }
+ },
+ {
+  "id": "q10",
+  "type": "keyword",
+  "query": "object expressions",
+  "relevant": {
+   "language-reference/object-expressions.md": 2
+  }
+ },
+ {
+  "id": "q11",
+  "type": "keyword",
+  "query": "string interpolation",
+  "relevant": {
+   "language-reference/interpolated-strings.md": 2,
+   "language-reference/strings.md": 1
+  }
+ },
+ {
+  "id": "q12",
+  "type": "keyword",
+  "query": "anonymous records",
+  "relevant": {
+   "language-reference/anonymous-records.md": 2
+  }
+ },
+ {
+  "id": "q13",
+  "type": "keyword",
+  "query": "recursive functions rec keyword",
+  "relevant": {
+   "language-reference/functions/recursive-functions-the-rec-keyword.md": 2
+  }
+ },
+ {
+  "id": "q14",
+  "type": "keyword",
+  "query": "signature files",
+  "relevant": {
+   "language-reference/signature-files.md": 2
+  }
+ },
+ {
+  "id": "q15",
+  "type": "keyword",
+  "query": "code quotations",
+  "relevant": {
+   "language-reference/code-quotations.md": 2
+  }
+ },
+ {
+  "id": "q16",
+  "type": "keyword",
+  "query": "byref struct span",
+  "relevant": {
+   "language-reference/byrefs.md": 2,
+   "language-reference/structs.md": 1
+  }
+ },
+ {
+  "id": "q17",
+  "type": "keyword",
+  "query": "fsi command line options",
+  "relevant": {
+   "language-reference/fsharp-interactive-options.md": 2,
+   "tools/fsharp-interactive/index.md": 1
+  }
+ },
+ {
+  "id": "q18",
+  "type": "keyword",
+  "query": "caller information attributes",
+  "relevant": {
+   "language-reference/caller-information.md": 2
+  }
+ },
+ {
+  "id": "q19",
+  "type": "keyword",
+  "query": "entry point",
+  "relevant": {
+   "language-reference/functions/entry-point.md": 2
+  }
+ },
+ {
+  "id": "q20",
+  "type": "keyword",
+  "query": "access control private internal",
+  "relevant": {
+   "language-reference/access-control.md": 2
+  }
+ },
+ {
+  "id": "q21",
+  "type": "question",
+  "query": "how do I handle errors without exceptions",
+  "relevant": {
+   "language-reference/results.md": 2,
+   "language-reference/options.md": 1,
+   "language-reference/exception-handling/index.md": 1
+  }
+ },
+ {
+  "id": "q22",
+  "type": "question",
+  "query": "how to represent a value that might be missing",
+  "relevant": {
+   "language-reference/options.md": 2,
+   "language-reference/value-options.md": 1,
+   "language-reference/values/null-values.md": 1
+  }
+ },
+ {
+  "id": "q23",
+  "type": "question",
+  "query": "how do I write asynchronous code",
+  "relevant": {
+   "language-reference/async-expressions.md": 2,
+   "language-reference/task-expressions.md": 2,
+   "tutorials/async.md": 2
+  }
+ },
+ {
+  "id": "q24",
+  "type": "question",
+  "query": "how to install F# on my machine",
+  "relevant": {
+   "get-started/install-fsharp.md": 2,
+   "get-started/index.md": 1
+  }
+ },
+ {
+  "id": "q25",
+  "type": "question",
+  "query": "what are the formatting conventions for F# code",
+  "relevant": {
+   "style-guide/formatting.md": 2,
+   "style-guide/conventions.md": 1
+  }
+ },
+ {
+  "id": "q26",
+  "type": "question",
+  "query": "how do I create a class with a constructor",
+  "relevant": {
+   "language-reference/classes.md": 2,
+   "language-reference/members/constructors.md": 2
+  }
+ },
+ {
+  "id": "q27",
+  "type": "question",
+  "query": "how do I loop over a list",
+  "relevant": {
+   "language-reference/loops-for-in-expression.md": 2,
+   "language-reference/lists.md": 1
+  }
+ },
+ {
+  "id": "q28",
+  "type": "question",
+  "query": "how to call a native C function from F#",
+  "relevant": {
+   "language-reference/functions/external-functions.md": 2
+  }
+ },
+ {
+  "id": "q29",
+  "type": "question",
+  "query": "how to run F# in a notebook",
+  "relevant": {
+   "tools/notebooks.md": 2
+  }
+ },
+ {
+  "id": "q30",
+  "type": "question",
+  "query": "what's new in F# 8",
+  "relevant": {
+   "whats-new/fsharp-8.md": 2
+  }
+ },
+ {
+  "id": "q31",
+  "type": "question",
+  "query": "how do I get the name of a variable as a string",
+  "relevant": {
+   "language-reference/nameof.md": 2
+  }
+ },
+ {
+  "id": "q32",
+  "type": "question",
+  "query": "how do I dispose resources automatically",
+  "relevant": {
+   "language-reference/resource-management-the-use-keyword.md": 2
+  }
+ },
+ {
+  "id": "q33",
+  "type": "question",
+  "query": "how do I define my own operators",
+  "relevant": {
+   "language-reference/operator-overloading.md": 2,
+   "language-reference/symbol-and-operator-reference/index.md": 1
+  }
+ },
+ {
+  "id": "q34",
+  "type": "question",
+  "query": "how do I extend an existing type with new methods",
+  "relevant": {
+   "language-reference/type-extensions.md": 2
+  }
+ },
+ {
+  "id": "q35",
+  "type": "question",
+  "query": "how do I define and implement an interface",
+  "relevant": {
+   "language-reference/interfaces.md": 2
+  }
+ },
+ {
+  "id": "q36",
+  "type": "question",
+  "query": "how to deploy an F# app to Azure",
+  "relevant": {
+   "using-fsharp-on-azure/deploying-and-managing.md": 2,
+   "using-fsharp-on-azure/other-azure-services.md": 1
+  }
+ },
+ {
+  "id": "q37",
+  "type": "exact",
+  "query": "FS0025",
+  "relevant": {
+   "language-reference/compiler-messages/fs0025.md": 2
+  }
+ },
+ {
+  "id": "q38",
+  "type": "exact",
+  "query": "FS0001",
+  "relevant": {
+   "language-reference/compiler-messages/fs0001.md": 2
+  }
+ },
+ {
+  "id": "q39",
+  "type": "exact",
+  "query": "failwith",
+  "relevant": {
+   "language-reference/exception-handling/the-failwith-function.md": 2
+  }
+ },
+ {
+  "id": "q40",
+  "type": "exact",
+  "query": "invalidArg",
+  "relevant": {
+   "language-reference/exception-handling/the-invalidArg-function.md": 2
+  }
+ },
+ {
+  "id": "q41",
+  "type": "exact",
+  "query": "member val auto-property",
+  "relevant": {
+   "language-reference/members/properties.md": 2
+  }
+ },
+ {
+  "id": "q42",
+  "type": "exact",
+  "query": "fixed keyword pinning",
+  "relevant": {
+   "language-reference/fixed.md": 2
+  }
+ }
+]
