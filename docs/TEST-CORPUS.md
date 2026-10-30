@@ -66,10 +66,10 @@ Fetched by a script into a gitignored `corpus/` directory. Data is JSONL, so the
 |---|---|---|
 | BEIR SciFact | ~5k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.67. |
 | BEIR NFCorpus | ~3.6k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.32. |
-| CodeSearchNet | large | Code plus natural-language queries. Closer to Ferret's real use. |
+| CodeSearchNet | large | Deferred past v1. Code plus natural-language queries, closer to Ferret's real use. Add once the eval harness works. |
 | Cranfield, CACM | ~1.4k, ~3.2k | Tiny classics for fast iteration. |
 
-Tooling: `ir_datasets` for download, `ir-measures` for nDCG and recall. Both are Python and only needed by the fetch and eval scripts, not by Ferret.
+Tooling: `.fsx` scripts. They download the BEIR zips, write one file per doc, and compute nDCG@10, recall and MRR from the qrels. The metrics are small enough to write ourselves.
 
 The published BM25 numbers give a check that our BM25 matches a reference implementation. Large gaps point to tokenisation or parameter differences (`k1`, `b`). Treat the figures above as approximate and confirm them against Anserini or BEIR before relying on them.
 
@@ -83,6 +83,8 @@ Fetched by script, never checked in.
 
 Report cold and warm runs, index size, and index build time.
 
+Harness scripts and raw results live in `benchmarks/`. Write-ups that interpret them go in `research/`.
+
 ## Layout
 
 ```
@@ -92,12 +94,13 @@ tests/
     smoke/         checked in (ddd/, noise/, queries.json)
 corpus/            gitignored, populated by scripts
 scripts/
-  fetch-corpus.sh
-  eval-relevance.*
+  fetch-corpus.fsx
+  eval-relevance.fsx
+benchmarks/        perf harness and raw results
 ```
 
-## Open questions
+## Decisions
 
-- Which scripting language for fetch and eval: shell, `.fsx`, or Python?
-- Is CodeSearchNet worth it at v1, or do SciFact and NFCorpus suffice?
-- Where should perf results be recorded: `research/`, or CI artefacts?
+- Scripts are `.fsx`.
+- CodeSearchNet is deferred past v1. SciFact and NFCorpus first.
+- Perf harness and results go in `benchmarks/`. Interpretation goes in `research/`.
