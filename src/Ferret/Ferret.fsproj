@@ -14,6 +14,7 @@
     <Compile Include="FileSource.fs" />
     <Compile Include="Text.fs" />
     <Compile Include="Bm25.fs" />
+    <Compile Include="Ranking.fs" />
     <Compile Include="Search.fs" />
   </ItemGroup>
 

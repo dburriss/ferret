@@ -7,12 +7,7 @@ open Ferret.FileSource
 /// Excerpt lines shown per file.
 let maxExcerpts = 3
 
-type private Doc =
-    { Path: string
-      Length: int
-      TermFreq: Map<string, int> }
-
-let private readDoc (files: IFileSource) (terms: Set<string>) (path: string) : Doc option =
+let private readCandidate (files: IFileSource) (terms: Set<string>) (path: string) : Candidate option =
     files.ReadLines path
     |> Option.map (fun lines ->
         let mutable length = 0
@@ -37,38 +32,26 @@ let private excerpts (files: IFileSource) (terms: Set<string>) (path: string) : 
         |> Seq.map (fun (i, line) -> { Path = path; LineNumber = i + 1; Line = line })
         |> List.ofSeq
 
-/// Ranks the files under `roots` against `query` with BM25 (OR semantics over its terms) and
-/// returns the best `limit`. Equal scores sort by ordinal path. Files without a query term are
-/// not returned.
-let search (files: IFileSource) (roots: string list) (query: string) (limit: int) : ScoredDoc list =
+/// Ranks the files under `roots` against `query` with `ranker` and returns the best `limit`, each
+/// with excerpts of the lines that contain a query term.
+let search
+    (ranker: Ranking.Ranker)
+    (files: IFileSource)
+    (roots: string list)
+    (query: string)
+    (limit: int)
+    : ScoredDoc list =
     let terms = Text.tokenize query |> List.distinct
-    let termSet = Set.ofList terms
-    let docs =
-        roots
-        |> Seq.collect files.Enumerate
-        |> Seq.distinct
-        |> Seq.choose (readDoc files termSet)
-        |> Array.ofSeq
-    if terms.IsEmpty || docs.Length = 0 then
+    if terms.IsEmpty then
         []
     else
-        let stats: Bm25.CorpusStats =
-            { DocCount = docs.Length
-              AvgLength = docs |> Array.averageBy (fun d -> float d.Length)
-              DocFreq =
-                terms
-                |> List.map (fun t -> t, docs |> Array.sumBy (fun d -> if d.TermFreq.ContainsKey t then 1 else 0))
-                |> Map.ofList }
-        docs
-        |> Array.map (fun d -> d, Bm25.score stats terms d.TermFreq d.Length)
-        |> Array.filter (fun (_, score) -> score > 0.0)
-        |> Array.sortWith (fun (a, sa) (b, sb) ->
-            match compare sb sa with
-            | 0 -> String.CompareOrdinal(a.Path, b.Path)
-            | c -> c)
-        |> Array.truncate limit
-        |> Array.map (fun (d, score) ->
-            { File = d.Path
-              Score = score
-              Excerpts = excerpts files termSet d.Path })
-        |> List.ofArray
+        let termSet = Set.ofList terms
+        let candidates =
+            roots
+            |> Seq.collect files.Enumerate
+            |> Seq.distinct
+            |> Seq.choose (readCandidate files termSet)
+            |> List.ofSeq
+        ranker { Text = query; Terms = terms } candidates
+        |> List.truncate limit
+        |> List.map (fun doc -> { doc with Excerpts = excerpts files termSet doc.File })

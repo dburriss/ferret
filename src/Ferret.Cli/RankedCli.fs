@@ -15,7 +15,7 @@ let run (deps: AdapterDeps) (args: RankedArgs) : int =
     let missing = roots |> List.filter (fun r -> deps.Files.Kind r = Missing)
     for root in missing do
         deps.Err.WriteLine $"ferret: {root}: No such file or directory (os error 2)"
-    let results = Search.search deps.Files (roots |> List.except missing) args.Query args.Limit
+    let results = Search.search Ranking.bm25 deps.Files (roots |> List.except missing) args.Query args.Limit
     Output.writeRanked deps.Out results
     deps.Out.Flush()
     if not missing.IsEmpty then 2

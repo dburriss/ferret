@@ -18,6 +18,17 @@ type Hit =
       LineNumber: int
       Line: string }
 
+/// A ranked-search query: the raw text and its distinct normalised terms.
+type Query =
+    { Text: string
+      Terms: string list }
+
+/// A file offered to a ranker: its token count and the frequency of each query term in it.
+type Candidate =
+    { Path: string
+      Length: int
+      TermFreq: Map<string, int> }
+
 /// A file ranked by relevance, with the lines that matched the query terms.
 type ScoredDoc =
     { File: string
