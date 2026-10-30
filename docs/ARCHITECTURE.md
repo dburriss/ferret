@@ -227,7 +227,7 @@ let main argv =
 
 ### Output
 
-`Output.fs` renders library results to text (default), table, `--json` or `--jsonl`. `--json` in plain mode is `rg`'s JSON Lines format. `--jsonl` is the ranked-mode equivalent for agents, with one result per line. `--no-snippet` returns metadata only and `--snippet-length <n>` caps excerpt size. Renderers take `SearchResult` and write to a `TextWriter`. The library never prints.
+`Output.fs` renders library results to text (default), table, `--json` or `--jsonl`. `--json` in plain mode is `rg`'s JSON Lines format. `--jsonl` is the ranked-mode equivalent for agents, with one object per excerpt line: `{"file","line","score","text"}`, score always present (4 decimals). `--scores` is ignored with it. `--no-snippet` returns metadata only and `--snippet-length <n>` caps excerpt size. Renderers take `SearchResult` and write to a `TextWriter`. The library never prints.
 
 ## Tests
 

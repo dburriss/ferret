@@ -15,6 +15,7 @@ type FerretArgs =
     | Lex
     | Limit of count: int
     | Scores
+    | Jsonl
     | Debug
 
     interface IArgParserTemplate with
@@ -31,6 +32,7 @@ type FerretArgs =
             | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
             | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
             | Scores -> "with --lex, prefix each result line with its relevance score."
+            | Jsonl -> "with --lex, print one JSON object per result line (file, line, score, text)."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

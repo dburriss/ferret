@@ -50,7 +50,8 @@ let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string l
             { Query = query
               Paths = paths
               Limit = defaultArg limit defaultLimit
-              Scores = r.Contains Scores }
+              Scores = r.Contains Scores
+              Jsonl = r.Contains Jsonl }
 
 let private version () =
     let assembly = Assembly.GetExecutingAssembly()
@@ -85,6 +86,9 @@ let main argv =
                 2
             | _ when parsed.Contains Scores ->
                 eprintfn "ferret: --scores requires --lex"
+                2
+            | _ when parsed.Contains Jsonl ->
+                eprintfn "ferret: --jsonl requires --lex"
                 2
             | _ ->
                 match toGrepArgs parsed afterSeparator with

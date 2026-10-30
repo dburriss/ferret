@@ -272,7 +272,8 @@ let private ranked query paths limit : RankedCli.RankedArgs =
     { Query = query
       Paths = paths
       Limit = limit
-      Scores = false }
+      Scores = false
+      Jsonl = false }
 
 let private runRanked (args: RankedCli.RankedArgs) =
     let out = new StringWriter()
@@ -365,3 +366,42 @@ let ``lex scores are non-increasing down the output`` () =
             out.TrimEnd('\n').Split('\n')
             |> Array.map (fun l -> float (l.Substring(1, l.IndexOf ']' - 1)))
         Assert.Equal<float[]>(Array.sortDescending scores, scores))
+
+let private parseJsonl (out: string) =
+    out.TrimEnd('\n').Split('\n')
+    |> Array.map (fun l -> System.Text.Json.JsonDocument.Parse(l).RootElement)
+
+[<Fact>]
+let ``lex jsonl writes one object per excerpt with file, line, score and text`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked { ranked "apple" [ d ] 100 with Jsonl = true }
+        Assert.Equal(0, code)
+        let objs = parseJsonl out
+        Assert.Equal(2, objs.Length)
+        Assert.Equal($"{d}/many.txt", objs[0].GetProperty("file").GetString())
+        Assert.Equal(1, objs[0].GetProperty("line").GetInt32())
+        Assert.Equal("apple apple apple", objs[0].GetProperty("text").GetString())
+        Assert.Matches(@"""score"":\d+\.\d{4}[,}]", out)
+        Assert.True(objs[0].GetProperty("score").GetDouble() >= objs[1].GetProperty("score").GetDouble()))
+
+[<Fact>]
+let ``lex jsonl escapes quotes, backslashes and control characters`` () =
+    withTree [ "a.txt", "apple \"q\" back\\slash\ttab\n" ] (fun d ->
+        let _, out, _ = runRanked { ranked "apple" [ d ] 100 with Jsonl = true }
+        let objs = parseJsonl out
+        Assert.Equal(1, objs.Length)
+        Assert.Equal("apple \"q\" back\\slash\ttab", objs[0].GetProperty("text").GetString()))
+
+[<Fact>]
+let ``lex jsonl ignores scores`` () =
+    withTree rankedTree (fun d ->
+        let _, withFlag, _ = runRanked { ranked "apple" [ d ] 100 with Jsonl = true; Scores = true }
+        let _, without, _ = runRanked { ranked "apple" [ d ] 100 with Jsonl = true }
+        Assert.Equal(without, withFlag))
+
+[<Fact>]
+let ``lex jsonl with no match exits 1 and prints nothing`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked { ranked "zebra" [ d ] 100 with Jsonl = true }
+        Assert.Equal(1, code)
+        Assert.Equal("", out))

@@ -8,7 +8,8 @@ type RankedArgs =
     { Query: string
       Paths: string list
       Limit: int
-      Scores: bool }
+      Scores: bool
+      Jsonl: bool }
 
 /// Ranked lexical search (`--lex`). Returns the exit code: 0 on results, 1 on none, 2 on error.
 let run (deps: AdapterDeps) (args: RankedArgs) : int =
@@ -17,7 +18,10 @@ let run (deps: AdapterDeps) (args: RankedArgs) : int =
     for root in missing do
         deps.Err.WriteLine $"ferret: {root}: No such file or directory (os error 2)"
     let results = Search.search Ranking.bm25 deps.Files (roots |> List.except missing) args.Query args.Limit
-    Output.writeRanked deps.Out args.Scores results
+    if args.Jsonl then
+        Output.writeRankedJsonl deps.Out results
+    else
+        Output.writeRanked deps.Out args.Scores results
     deps.Out.Flush()
     if not missing.IsEmpty then 2
     elif results.IsEmpty then 1
