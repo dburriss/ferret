@@ -1,8 +1,24 @@
 module Ferret.Search
 
 open System
+open System.Diagnostics
 open Ferret.Domain
 open Ferret.FileSource
+
+/// Phase timing. Listeners attach to the source named "Ferret"; with none, `StartActivity` returns
+/// null and a phase costs nothing. One activity per phase, never per file.
+[<Literal>]
+let ActivitySourceName = "Ferret"
+
+let private activitySource = new ActivitySource(ActivitySourceName)
+
+/// Runs `body` inside an activity called `name`.
+let private phase (name: string) (body: Activity -> 'a) : 'a =
+    use activity = activitySource.StartActivity name
+    body activity
+
+let private tag (activity: Activity) (key: string) (value: obj) =
+    if not (isNull activity) then activity.SetTag(key, value) |> ignore
 
 /// Excerpt lines shown per file.
 let maxExcerpts = 3
@@ -60,9 +76,13 @@ let private rank
     (candidates: Candidate list)
     : ScoredDoc list =
     let termSet = Set.ofList terms
-    ranker { Text = query; Terms = terms } candidates
-    |> List.truncate limit
-    |> List.map (fun doc -> { doc with Excerpts = excerpts files termSet doc.File })
+    let top =
+        phase "ferret.rank" (fun a ->
+            tag a "candidates" candidates.Length
+            ranker { Text = query; Terms = terms } candidates |> List.truncate limit)
+    phase "ferret.excerpts" (fun a ->
+        tag a "files" top.Length
+        top |> List.map (fun doc -> { doc with Excerpts = excerpts files termSet doc.File }))
 
 /// Ranks the files under `roots` against `query` with `ranker` and returns the best `limit`, each
 /// with excerpts of the lines that contain a query term. Reads every file on every call.
@@ -78,31 +98,33 @@ let search
         []
     else
         let termSet = Set.ofList terms
-        roots
-        |> Seq.collect files.Enumerate
-        |> Seq.distinct
-        |> Seq.choose (readCandidate files termSet)
-        |> List.ofSeq
-        |> rank ranker files query terms limit
+        let paths =
+            phase "ferret.walk" (fun a ->
+                let paths = roots |> Seq.collect files.Enumerate |> Seq.distinct |> List.ofSeq
+                tag a "files" paths.Length
+                paths)
+        let candidates =
+            phase "ferret.read" (fun a ->
+                let candidates = paths |> List.choose (readCandidate files termSet)
+                tag a "files" candidates.Length
+                candidates)
+        rank ranker files query terms limit candidates
 
 /// Everything about a file that does not depend on the query.
-let private buildEntry (files: IFileSource) (path: string) : Index.Entry option =
-    // Stamp first: a file changed while being read then looks stale on the next run.
-    files.Stamp path
-    |> Option.bind (fun stamp ->
-        files.ReadLines path
-        |> Option.map (fun lines ->
-            let lines = if Markdown.isMarkdown path then Seq.cache lines else lines
-            let mutable length = 0
-            let counts = Collections.Generic.Dictionary<string, int>()
-            for line in lines do
-                for token in Text.tokenize line do
-                    length <- length + 1
-                    counts[token] <- (match counts.TryGetValue token with | true, n -> n + 1 | _ -> 1)
-            { Stamp = stamp
-              Length = length
-              TermFreq = counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq
-              FieldTerms = fieldTokens path lines }))
+let private buildEntry (files: IFileSource) (path: string) (stamp: string) : Index.Entry option =
+    files.ReadLines path
+    |> Option.map (fun lines ->
+        let lines = if Markdown.isMarkdown path then Seq.cache lines else lines
+        let mutable length = 0
+        let counts = Collections.Generic.Dictionary<string, int>()
+        for line in lines do
+            for token in Text.tokenize line do
+                length <- length + 1
+                counts[token] <- (match counts.TryGetValue token with | true, n -> n + 1 | _ -> 1)
+        { Stamp = stamp
+          Length = length
+          TermFreq = counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq
+          FieldTerms = fieldTokens path lines })
 
 let private candidateOf (terms: string list) (termSet: Set<string>) (path: string) (entry: Index.Entry) : Candidate =
     { Path = path
@@ -140,38 +162,64 @@ let searchIndexed
     else
         let termSet = Set.ofList terms
         let entries =
-            match store.Load() |> Option.filter (fun s -> s.Version = Index.version) with
-            | Some s -> Collections.Generic.Dictionary<string, Index.Entry>(s.Entries)
-            | None -> Collections.Generic.Dictionary<string, Index.Entry>()
+            phase "ferret.index.load" (fun a ->
+                let loaded = store.Load() |> Option.filter (fun s -> s.Version = Index.version)
+                tag a "loaded" loaded.IsSome
+                match loaded with
+                | Some s ->
+                    tag a "entries" s.Entries.Count
+                    Collections.Generic.Dictionary<string, Index.Entry>(s.Entries)
+                | None -> Collections.Generic.Dictionary<string, Index.Entry>())
+        // Stamp first, then read: a file changed while being read then looks stale on the next run.
+        let walked =
+            phase "ferret.walk" (fun a ->
+                let walked =
+                    roots
+                    |> Seq.collect files.Enumerate
+                    |> Seq.distinct
+                    |> Seq.map (fun path -> path, entryKey path, files.Stamp path)
+                    |> List.ofSeq
+                tag a "files" walked.Length
+                walked)
         let seen = Collections.Generic.HashSet<string>()
         let mutable changed = false
+        let mutable reused = 0
+        let mutable built = 0
         let candidates =
-            roots
-            |> Seq.collect files.Enumerate
-            |> Seq.distinct
-            |> Seq.choose (fun path ->
-                let key = entryKey path
-                let stamp = files.Stamp path
-                match entries.TryGetValue key with
-                | true, entry when stamp = Some entry.Stamp ->
-                    seen.Add key |> ignore
-                    Some(candidateOf terms termSet path entry)
-                | cached, _ ->
-                    changed <- true
-                    match buildEntry files path with
-                    | Some entry ->
-                        seen.Add key |> ignore
-                        entries[key] <- entry
-                        Some(candidateOf terms termSet path entry)
-                    | None ->
-                        if cached then entries.Remove key |> ignore
-                        None)
-            |> List.ofSeq
+            phase "ferret.index.build" (fun a ->
+                let candidates =
+                    walked
+                    |> List.choose (fun (path, key, stamp) ->
+                        match entries.TryGetValue key with
+                        | true, entry when stamp = Some entry.Stamp ->
+                            seen.Add key |> ignore
+                            reused <- reused + 1
+                            Some(candidateOf terms termSet path entry)
+                        | cached, _ ->
+                            changed <- true
+                            match stamp |> Option.bind (buildEntry files path) with
+                            | Some entry ->
+                                seen.Add key |> ignore
+                                entries[key] <- entry
+                                built <- built + 1
+                                Some(candidateOf terms termSet path entry)
+                            | None ->
+                                if cached then entries.Remove key |> ignore
+                                None)
+                tag a "files.total" walked.Length
+                tag a "files.reused" reused
+                tag a "files.built" built
+                candidates)
         let searched =
             roots |> List.map (fun r -> entryKey (if r = "" then "." else r), files.Kind r = IsDirectory)
         let gone = entries.Keys |> Seq.filter (fun k -> not (seen.Contains k) && isUnder searched k) |> List.ofSeq
         for key in gone do
             entries.Remove key |> ignore
-        if changed || not gone.IsEmpty then
-            store.Save { Version = Index.version; Entries = entries }
+        phase "ferret.index.save" (fun a ->
+            let save = changed || not gone.IsEmpty
+            tag a "saved" save
+            tag a "entries" entries.Count
+            tag a "files.removed" gone.Length
+            if save then
+                store.Save { Version = Index.version; Entries = entries })
         rank ranker files query terms limit candidates

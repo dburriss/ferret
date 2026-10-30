@@ -28,6 +28,10 @@ mise run bench [-- runs]   # builds Release, then runs hyperfine (default 10 run
 - It also times `--lex` per query on the perf corpora and any fetched BEIR / F# docs sets, in three modes: `per-run` (`--no-index`), `index-build` (cache deleted before every run) and `index-warm`. The cache lives in a throwaway dir (`FERRET_CACHE_DIR`). Results go under `lex` in the same file, with `indexBytes`.
 - `FERRET_BENCH_CORPORA=scifact,fsharp-docs` limits the run to named corpora, which skips the multi-GB ones.
 
+### Profiling
+
+Before optimising the index build or a warm query, run with `--timings` to see where the time goes: `ferret --lex --timings <terms> <path>`. It prints one row per phase to stderr (`ferret.index.load`, `ferret.walk`, `ferret.index.build`, `ferret.rank`, `ferret.index.save`, `ferret.excerpts`; `--no-index` gives `ferret.walk`, `ferret.read`, `ferret.rank`, `ferret.excerpts`), with file counts as tags. A cold run (no index) shows the build cost; a warm run should show `files.built=0`, so its time is load, walk, rank and excerpts.
+
 ## Relevance
 
 Runs Ferret's BM25 over labelled datasets and reports nDCG@10, recall@100 and MRR@10. The runner is `scripts/eval-relevance.fsx`.

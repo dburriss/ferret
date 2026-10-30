@@ -276,7 +276,8 @@ let private ranked query paths limit : RankedCli.RankedArgs =
       Limit = limit
       Scores = false
       Jsonl = false
-      NoIndex = false }
+      NoIndex = false
+      Timings = false }
 
 let private runRanked (args: RankedCli.RankedArgs) =
     let out = new StringWriter()
@@ -409,6 +410,17 @@ let ``lex jsonl with no match exits 1 and prints nothing`` () =
         let code, out, _ = runRanked { ranked "zebra" [ d ] 100 with Jsonl = true }
         Assert.Equal(1, code)
         Assert.Equal("", out))
+
+[<Fact>]
+let ``lex timings leave stdout unchanged and write the phases to stderr`` () =
+    withTree rankedTree (fun d ->
+        let _, plain, plainErr = runRanked (ranked "apple" [ d ] 100)
+        let _, out, err = runRanked { ranked "apple" [ d ] 100 with Timings = true }
+        Assert.Equal(plain, out)
+        Assert.Equal("", plainErr)
+        Assert.StartsWith("phase", err)
+        for name in [ "ferret.index.load"; "ferret.walk"; "ferret.index.build"; "ferret.rank"; "ferret.excerpts" ] do
+            Assert.Contains(name, err))
 
 [<Fact>]
 let ``lex gives the same output with and without the index`` () =

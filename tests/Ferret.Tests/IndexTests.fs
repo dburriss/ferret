@@ -189,3 +189,40 @@ let ``an unwritable cache location does not fail the search`` () =
         Directory.CreateDirectory src |> ignore
         File.WriteAllText(Path.Combine(src, "a.txt"), "apple\n")
         assertSame (perRun src "apple") (indexed store src "apple"))
+
+/// Runs `body` while a listener collects its finished "Ferret" activities, in completion order.
+let private withPhases (body: unit -> unit) : Diagnostics.Activity list =
+    let finished = ResizeArray<Diagnostics.Activity>()
+    use listener = new Diagnostics.ActivityListener()
+    listener.ShouldListenTo <- (fun source -> source.Name = Search.ActivitySourceName)
+    listener.Sample <- Diagnostics.SampleActivity<Diagnostics.ActivityContext>(fun _ -> Diagnostics.ActivitySamplingResult.AllData)
+    // Tests run in parallel and the source is process-wide; search is synchronous, so keep this thread's.
+    let thread = Environment.CurrentManagedThreadId
+    listener.ActivityStopped <- (fun a -> if Environment.CurrentManagedThreadId = thread then lock finished (fun () -> finished.Add a))
+    Diagnostics.ActivitySource.AddActivityListener listener
+    body ()
+    List.ofSeq finished
+
+let private tagOf (key: string) (activity: Diagnostics.Activity) = activity.GetTagItem key
+
+[<Fact>]
+let ``indexed search emits its phases, and a warm run builds no files`` () =
+    withTree [ "a.txt", "apple pie\n"; "b.txt", "apple tart\n"; "c.txt", "cherry\n" ] (fun root ->
+        let store = MemoryIndexStore()
+        let expected =
+            [ "ferret.index.load"; "ferret.walk"; "ferret.index.build"; "ferret.index.save"; "ferret.rank"; "ferret.excerpts" ]
+        let cold = withPhases (fun () -> indexed store root "apple" |> ignore)
+        let warm = withPhases (fun () -> indexed store root "apple" |> ignore)
+        Assert.Equal<string list>(expected, cold |> List.map _.OperationName)
+        Assert.Equal<string list>(expected, warm |> List.map _.OperationName)
+        let build (phases: Diagnostics.Activity list) = phases |> List.find (fun a -> a.OperationName = "ferret.index.build")
+        Assert.Equal(box 3, tagOf "files.built" (build cold))
+        Assert.Equal(box 0, tagOf "files.reused" (build cold))
+        Assert.Equal(box 0, tagOf "files.built" (build warm))
+        Assert.Equal(box 3, tagOf "files.reused" (build warm)))
+
+[<Fact>]
+let ``per-run search emits walk, read, rank and excerpts`` () =
+    withTree [ "a.txt", "apple\n" ] (fun root ->
+        let phases = withPhases (fun () -> perRun root "apple" |> ignore)
+        Assert.Equal<string list>([ "ferret.walk"; "ferret.read"; "ferret.rank"; "ferret.excerpts" ], phases |> List.map _.OperationName))
