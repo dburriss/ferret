@@ -1,0 +1,40 @@
+[tools]
+hyperfine = "latest"
+
+[tasks."fetch:corpus"]
+description = "Fetch BEIR datasets into corpus/ (args: scifact|nfcorpus, default both)"
+run = "dotnet fsi scripts/fetch-corpus.fsx"
+
+[tasks."fetch:perf"]
+description = "Shallow-clone the perf corpora into benchmarks/data/ (several GB)"
+run = "dotnet fsi benchmarks/fetch.fsx"
+
+[tasks."build:ferret"]
+hide = true
+run = "dotnet build -c Release src/Ferret"
+
+[tasks."build:cli"]
+hide = true
+run = "dotnet build -c Release src/Ferret.Cli"
+
+[tasks."eval:relevance"]
+description = "nDCG/recall/MRR for a fetched dataset (arg: scifact|nfcorpus)"
+depends = ["build:ferret"]
+run = "dotnet fsi scripts/eval-relevance.fsx"
+
+[tasks.bench]
+description = "Time rg vs ferret with hyperfine (optional arg: runs)"
+depends = ["build:cli"]
+run = "dotnet fsi benchmarks/run.fsx"
+
+[tasks.bootstrap]
+description = "Set up the repo: restore packages and fetch the BEIR test corpora (no multi-GB perf clones)"
+depends = ["restore", "fetch:corpus"]
+
+[tasks."bootstrap:all"]
+description = "bootstrap plus the multi-GB perf clones"
+depends = ["bootstrap", "fetch:perf"]
+
+[tasks.restore]
+hide = true
+run = "dotnet restore"
