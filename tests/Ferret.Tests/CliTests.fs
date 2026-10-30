@@ -268,7 +268,11 @@ let ``character devices, block devices and directories are not`` () =
     Assert.False(Deps.stdinModeIsSearchable 0o060660u) // block device
     Assert.False(Deps.stdinModeIsSearchable 0o040755u) // directory
 
-let private ranked query paths limit : RankedCli.RankedArgs = { Query = query; Paths = paths; Limit = limit }
+let private ranked query paths limit : RankedCli.RankedArgs =
+    { Query = query
+      Paths = paths
+      Limit = limit
+      Scores = false }
 
 let private runRanked (args: RankedCli.RankedArgs) =
     let out = new StringWriter()
@@ -340,3 +344,24 @@ let ``lex with a missing path exits 2`` () =
         let code, _, err = runRanked (ranked "apple" [ $"{d}/nope" ] 100)
         Assert.Equal(2, code)
         Assert.Contains("No such file or directory", err))
+
+[<Fact>]
+let ``lex scores prefix every excerpt line`` () =
+    withTree rankedTree (fun d ->
+        let _, plain, _ = runRanked (ranked "apple" [ d ] 100)
+        let _, out, _ = runRanked { ranked "apple" [ d ] 100 with Scores = true }
+        let outLines = out.TrimEnd('\n').Split('\n')
+        Assert.Equal(2, outLines.Length)
+        for line in outLines do
+            Assert.Matches(@"^\[\d+\.\d{4}\] ", line)
+        let stripped = outLines |> Array.map (fun l -> l.Substring(l.IndexOf("] ") + 2))
+        Assert.Equal(plain, lines (List.ofArray stripped)))
+
+[<Fact>]
+let ``lex scores are non-increasing down the output`` () =
+    withTree rankedTree (fun d ->
+        let _, out, _ = runRanked { ranked "apple banana" [ d ] 100 with Scores = true }
+        let scores =
+            out.TrimEnd('\n').Split('\n')
+            |> Array.map (fun l -> float (l.Substring(1, l.IndexOf ']' - 1)))
+        Assert.Equal<float[]>(Array.sortDescending scores, scores))

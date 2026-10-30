@@ -1,5 +1,6 @@
 module Ferret.Cli.Output
 
+open System.Globalization
 open System.IO
 open Ferret.Domain
 
@@ -22,8 +23,13 @@ let writeCount (w: TextWriter) (withFilename: bool) (path: string) (count: int) 
     writePrefix w withFilename path
     w.WriteLine count
 
-/// One `path:line:text` line per excerpt, files in rank order.
-let writeRanked (w: TextWriter) (docs: ScoredDoc list) =
+/// One `path:line:text` line per excerpt, files in rank order. With `scores`, each line is
+/// prefixed by `[score]` (4 decimals, invariant culture).
+let writeRanked (w: TextWriter) (scores: bool) (docs: ScoredDoc list) =
     for doc in docs do
         for hit in doc.Excerpts do
+            if scores then
+                w.Write '['
+                w.Write(doc.Score.ToString("F4", CultureInfo.InvariantCulture))
+                w.Write "] "
             writeHit w true true hit

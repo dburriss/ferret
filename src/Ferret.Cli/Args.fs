@@ -14,6 +14,7 @@ type FerretArgs =
     | [<AltCommandLine("-V")>] Version
     | Lex
     | Limit of count: int
+    | Scores
     | Debug
 
     interface IArgParserTemplate with
@@ -29,6 +30,7 @@ type FerretArgs =
             | Version -> "print the version."
             | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
             | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
+            | Scores -> "with --lex, prefix each result line with its relevance score."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

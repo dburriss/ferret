@@ -32,7 +32,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Index` | Build, load and invalidate the token index and corpus stats | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (minimal tokenizer: no stop words or stemming), `Bm25`, `Search` (per-run, no index). **Planned:** `Ranking` (the `Ranker` seam), `Index`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (minimal tokenizer: no stop words or stemming), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run, no index). **Planned:** `Index`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
 
 ### Ports
 
@@ -96,7 +96,7 @@ Ignored files are dropped before stats are computed, so they never skew `df` or 
 type Ranker = Query -> Candidate list -> ScoredDoc list
 ```
 
-- `Bm25.ranker`: **Planned.** `K1 = 1.2`, `B = 0.75`, non-negative IDF, boosts as named constants, ties broken by ordinal path.
+- `Ranking.bm25`: **Built.** `K1 = 1.2`, `B = 0.75`, non-negative IDF, boosts as named constants, ties broken by ordinal path.
 - `Semantic.ranker`: **Future.** Chunk by heading, paragraph, then line or word. Roll chunk hits up to files with `max`. The best chunk is the excerpt.
 - `Ranking.fuse`: **Future.** Reciprocal rank fusion, `k = 60`, optional weights, top 50-100 per ranker.
 
@@ -145,7 +145,7 @@ src/Ferret.Cli/
   Program.fs         entry point, mode selection, dispatch
 ```
 
-**Built:** `Args`, `Deps`, `GrepCli`, `RankedCli` (`--lex` and `--limit`, default 100), `Output` (text only) and `Program`, with `--version` handled inline in `Program.fs`. **Planned:** `--sem`/`--hybrid` in `RankedCli`, `MaintenanceCli`, `VersionCli` and the other renderers. Plain mode supports `-i`, `-F`, `-n`, `-l`, `-c`, `-w`, `-V` and `--debug`.
+**Built:** `Args`, `Deps`, `GrepCli`, `RankedCli` (`--lex`, `--limit` default 100, and `--scores`), `Output` (text only, with an optional `[score]` prefix) and `Program`, with `--version` handled inline in `Program.fs`. **Planned:** `--sem`/`--hybrid` in `RankedCli`, `MaintenanceCli`, `VersionCli` and the other renderers. Plain mode supports `-i`, `-F`, `-n`, `-l`, `-c`, `-w`, `-V` and `--debug`.
 
 The assembly is `Ferret.Cli`, not `ferret`: `ferret.dll` would collide with the library's `Ferret.dll` on case-insensitive file systems. The installed command is still `ferret` (`ToolCommandName`).
 

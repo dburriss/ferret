@@ -46,7 +46,11 @@ let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string l
     | _, Some limit, _ when limit < 1 -> Error "--limit must be at least 1"
     | _, _, [] -> Error "--lex needs query terms"
     | _, limit, query :: paths ->
-        Ok { Query = query; Paths = paths; Limit = defaultArg limit defaultLimit }
+        Ok
+            { Query = query
+              Paths = paths
+              Limit = defaultArg limit defaultLimit
+              Scores = r.Contains Scores }
 
 let private version () =
     let assembly = Assembly.GetExecutingAssembly()
@@ -78,6 +82,9 @@ let main argv =
                     2
             | _ when parsed.Contains Limit ->
                 eprintfn "ferret: --limit requires --lex"
+                2
+            | _ when parsed.Contains Scores ->
+                eprintfn "ferret: --scores requires --lex"
                 2
             | _ ->
                 match toGrepArgs parsed afterSeparator with
