@@ -2,32 +2,94 @@
   "hyperfine": "hyperfine 2.0.0",
   "lex": [
     {
+      "corpus": "linux",
+      "indexBytes": 226991787,
+      "query": "mutex lock",
+      "timings": [
+        {
+          "mean_ms": 22701.8866167,
+          "median_ms": 21711.548188,
+          "min_ms": 21330.628958999998,
+          "peak_rss_mib": 107.078125,
+          "stddev_ms": 1602.0249560580216,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 45674.7782002,
+          "median_ms": 45656.3089375,
+          "min_ms": 44907.345624999994,
+          "peak_rss_mib": 1763.0859375,
+          "stddev_ms": 576.1691558383422,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 3431.9696711000006,
+          "median_ms": 3363.026646,
+          "min_ms": 3313.760334,
+          "peak_rss_mib": 340.9140625,
+          "stddev_ms": 151.94434000328275,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "indexBytes": 226991787,
+      "query": "memory allocation failure",
+      "timings": [
+        {
+          "mean_ms": 31475.6514335,
+          "median_ms": 30145.800041500002,
+          "min_ms": 29475.065875,
+          "peak_rss_mib": 107.8359375,
+          "stddev_ms": 2431.7002848974926,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 46439.358062399995,
+          "median_ms": 45943.358771,
+          "min_ms": 45417.639416,
+          "peak_rss_mib": 1765.5390625,
+          "stddev_ms": 1635.6995720137772,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 3471.1586749,
+          "median_ms": 3460.5314585,
+          "min_ms": 3342.3418749999996,
+          "peak_rss_mib": 340.828125,
+          "stddev_ms": 94.64264369612744,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
       "corpus": "dotnet-runtime",
       "indexBytes": 121402871,
       "query": "thread pool",
       "timings": [
         {
-          "mean_ms": 12669.377500666664,
-          "median_ms": 12228.519709,
-          "min_ms": 12132.610334,
-          "peak_rss_mib": 117.75,
-          "stddev_ms": 848.0050538884838,
+          "mean_ms": 12139.1387582,
+          "median_ms": 12090.20975,
+          "min_ms": 11943.573125,
+          "peak_rss_mib": 117.296875,
+          "stddev_ms": 165.24680668619038,
           "tool": "per-run"
         },
         {
-          "mean_ms": 23041.266805333333,
-          "median_ms": 22973.705125,
-          "min_ms": 22286.174791,
-          "peak_rss_mib": 881.546875,
-          "stddev_ms": 791.0397057380083,
+          "mean_ms": 19369.6063209,
+          "median_ms": 19090.467167,
+          "min_ms": 18798.27675,
+          "peak_rss_mib": 881.21875,
+          "stddev_ms": 799.6880942443498,
           "tool": "index-build"
         },
         {
-          "mean_ms": 3014.638680333333,
-          "median_ms": 3010.066583,
-          "min_ms": 3009.6584169999996,
-          "peak_rss_mib": 288.703125,
-          "stddev_ms": 8.275103963120321,
+          "mean_ms": 2844.3721542000003,
+          "median_ms": 2853.7579795,
+          "min_ms": 2791.764916,
+          "peak_rss_mib": 291.3046875,
+          "stddev_ms": 37.29816763251831,
           "tool": "index-warm"
         }
       ]
@@ -38,27 +100,213 @@
       "query": "garbage collection",
       "timings": [
         {
-          "mean_ms": 12241.706513666666,
-          "median_ms": 12236.454915999999,
-          "min_ms": 12209.610791,
-          "peak_rss_mib": 117.5,
-          "stddev_ms": 35.01811693701448,
+          "mean_ms": 12127.0438084,
+          "median_ms": 12102.6590835,
+          "min_ms": 11980.640667,
+          "peak_rss_mib": 117.1015625,
+          "stddev_ms": 84.5854972744389,
           "tool": "per-run"
         },
         {
-          "mean_ms": 23872.157930666664,
-          "median_ms": 23820.635416999998,
-          "min_ms": 22441.457667000002,
-          "peak_rss_mib": 882.4375,
-          "stddev_ms": 1457.1448410360827,
+          "mean_ms": 18700.755475100003,
+          "median_ms": 18691.6828755,
+          "min_ms": 18524.536667,
+          "peak_rss_mib": 883.140625,
+          "stddev_ms": 124.8618027189215,
           "tool": "index-build"
         },
         {
-          "mean_ms": 3103.136222333333,
-          "median_ms": 3069.527708,
-          "min_ms": 3024.058959,
-          "peak_rss_mib": 290.84375,
-          "stddev_ms": 100.20187198931143,
+          "mean_ms": 2855.1090666,
+          "median_ms": 2856.0950624999996,
+          "min_ms": 2816.52075,
+          "peak_rss_mib": 293.140625,
+          "stddev_ms": 18.98836256714502,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "scifact",
+      "indexBytes": 7107232,
+      "query": "gene expression cancer",
+      "timings": [
+        {
+          "mean_ms": 849.2795709000001,
+          "median_ms": 845.4414375,
+          "min_ms": 820.793167,
+          "peak_rss_mib": 70.6328125,
+          "stddev_ms": 16.146184439398017,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1318.4730293,
+          "median_ms": 1314.9657289999998,
+          "min_ms": 1267.786833,
+          "peak_rss_mib": 119.1875,
+          "stddev_ms": 38.83816044954835,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 303.23895409999994,
+          "median_ms": 302.7015625,
+          "min_ms": 296.630208,
+          "peak_rss_mib": 83.578125,
+          "stddev_ms": 4.973996690204358,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "scifact",
+      "indexBytes": 7107232,
+      "query": "vitamin deficiency",
+      "timings": [
+        {
+          "mean_ms": 832.3278751,
+          "median_ms": 836.0033955,
+          "min_ms": 809.7034580000001,
+          "peak_rss_mib": 70.296875,
+          "stddev_ms": 14.880152338029223,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1322.7642833000002,
+          "median_ms": 1314.4326665,
+          "min_ms": 1298.376541,
+          "peak_rss_mib": 119.1171875,
+          "stddev_ms": 24.78189172600338,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 299.7054168,
+          "median_ms": 298.517438,
+          "min_ms": 292.35475,
+          "peak_rss_mib": 80.3515625,
+          "stddev_ms": 6.490169438492334,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "nfcorpus",
+      "indexBytes": 5244519,
+      "query": "breast cancer diet",
+      "timings": [
+        {
+          "mean_ms": 697.6977917000002,
+          "median_ms": 697.1697705,
+          "min_ms": 649.361334,
+          "peak_rss_mib": 69.7890625,
+          "stddev_ms": 23.138680356748864,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1062.5825333999999,
+          "median_ms": 1060.996479,
+          "min_ms": 1047.249542,
+          "peak_rss_mib": 106.6484375,
+          "stddev_ms": 8.863704990456856,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 247.52695420000003,
+          "median_ms": 247.35375000000002,
+          "min_ms": 242.658125,
+          "peak_rss_mib": 77.28125,
+          "stddev_ms": 4.129503597070776,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "nfcorpus",
+      "indexBytes": 5244519,
+      "query": "cholesterol",
+      "timings": [
+        {
+          "mean_ms": 680.2180084000001,
+          "median_ms": 679.782917,
+          "min_ms": 668.9755,
+          "peak_rss_mib": 69.671875,
+          "stddev_ms": 7.9026990520663105,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1055.8477002,
+          "median_ms": 1057.415875,
+          "min_ms": 1036.071792,
+          "peak_rss_mib": 106.8984375,
+          "stddev_ms": 10.238250797050124,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 246.25868340000002,
+          "median_ms": 247.04352100000003,
+          "min_ms": 241.20883400000002,
+          "peak_rss_mib": 77.671875,
+          "stddev_ms": 3.968673071108701,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 257.6812666,
+          "median_ms": 255.70400000000004,
+          "min_ms": 251.31375,
+          "peak_rss_mib": 69.171875,
+          "stddev_ms": 8.65556696489047,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 300.31957090000003,
+          "median_ms": 298.5635415,
+          "min_ms": 291.068709,
+          "peak_rss_mib": 74.390625,
+          "stddev_ms": 6.5998444702472625,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 152.979329,
+          "median_ms": 151.09885450000002,
+          "min_ms": 149.45325,
+          "peak_rss_mib": 69.734375,
+          "stddev_ms": 5.95645029884084,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "async workflow",
+      "timings": [
+        {
+          "mean_ms": 240.0748376,
+          "median_ms": 240.20945850000004,
+          "min_ms": 235.25562500000004,
+          "peak_rss_mib": 68.953125,
+          "stddev_ms": 2.292643320563413,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 278.35910010000003,
+          "median_ms": 278.986396,
+          "min_ms": 272.842917,
+          "peak_rss_mib": 74.3671875,
+          "stddev_ms": 4.026695500273818,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 132.4712459,
+          "median_ms": 131.27002050000002,
+          "min_ms": 130.422292,
+          "peak_rss_mib": 69.671875,
+          "stddev_ms": 2.3455376069221554,
           "tool": "index-warm"
         }
       ]
@@ -67,24 +315,166 @@
   "os": "macOS 26.7.1",
   "results": [
     {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "mutex_lock",
+      "timings": [
+        {
+          "mean_ms": 1133.7940957,
+          "median_ms": 1133.2739795,
+          "min_ms": 1114.843458,
+          "peak_rss_mib": 14.4453125,
+          "stddev_ms": 12.642255949888218,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8272.467029100002,
+          "median_ms": 8249.945646,
+          "min_ms": 8155.123667,
+          "peak_rss_mib": 75.25,
+          "stddev_ms": 82.36601481292209,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "TODO",
+      "timings": [
+        {
+          "mean_ms": 1113.0116376,
+          "median_ms": 1118.0802294999999,
+          "min_ms": 1084.335667,
+          "peak_rss_mib": 14.203125,
+          "stddev_ms": 17.914222889567135,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8352.3212585,
+          "median_ms": 8352.3039795,
+          "min_ms": 8184.347417,
+          "peak_rss_mib": 75.46875,
+          "stddev_ms": 140.10396874597902,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-F"
+      ],
+      "pattern": "struct file_operations",
+      "timings": [
+        {
+          "mean_ms": 1146.6022501000002,
+          "median_ms": 1142.3847294999998,
+          "min_ms": 1095.891583,
+          "peak_rss_mib": 14.4140625,
+          "stddev_ms": 40.50005033433028,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8336.0122417,
+          "median_ms": 8334.266479499998,
+          "min_ms": 8291.413167,
+          "peak_rss_mib": 75.3203125,
+          "stddev_ms": 28.364158626440318,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "[A-Z]{5}_[A-Z]{5}",
+      "timings": [
+        {
+          "mean_ms": 1579.4135915000002,
+          "median_ms": 1573.780416,
+          "min_ms": 1566.4014590000002,
+          "peak_rss_mib": 91.4140625,
+          "stddev_ms": 14.573617837228124,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 9823.8232748,
+          "median_ms": 9822.566687,
+          "min_ms": 9686.135583000001,
+          "peak_rss_mib": 75.46875,
+          "stddev_ms": 81.24119703549663,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-i"
+      ],
+      "pattern": "hello",
+      "timings": [
+        {
+          "mean_ms": 1155.2814581999999,
+          "median_ms": 1149.200166,
+          "min_ms": 1123.6685,
+          "peak_rss_mib": 14.5,
+          "stddev_ms": 28.393976413204943,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8438.4883791,
+          "median_ms": 8386.598374999998,
+          "min_ms": 8317.910917000001,
+          "peak_rss_mib": 75.375,
+          "stddev_ms": 159.4350986506945,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "zzzznomatch",
+      "timings": [
+        {
+          "mean_ms": 1125.7293333000002,
+          "median_ms": 1118.0499795,
+          "min_ms": 1096.029417,
+          "peak_rss_mib": 14.21875,
+          "stddev_ms": 23.950140243083823,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8263.3328457,
+          "median_ms": 8190.221416,
+          "min_ms": 8134.829542,
+          "peak_rss_mib": 75.34375,
+          "stddev_ms": 122.01397510788979,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
       "corpus": "dotnet-runtime",
       "flags": [],
       "pattern": "mutex_lock",
       "timings": [
         {
-          "mean_ms": 800.9862223333333,
-          "median_ms": 797.475709,
-          "min_ms": 783.5719170000001,
-          "peak_rss_mib": 16.625,
-          "stddev_ms": 19.40914436984475,
+          "mean_ms": 819.5049250000001,
+          "median_ms": 822.4758540000001,
+          "min_ms": 798.2436250000001,
+          "peak_rss_mib": 16.6953125,
+          "stddev_ms": 11.274316232175376,
           "tool": "rg"
         },
         {
-          "mean_ms": 6202.313152666667,
-          "median_ms": 6193.5046250000005,
-          "min_ms": 6164.975,
-          "peak_rss_mib": 79.453125,
-          "stddev_ms": 42.43373604810558,
+          "mean_ms": 6183.0598457,
+          "median_ms": 6194.711958,
+          "min_ms": 6082.208625,
+          "peak_rss_mib": 79.6875,
+          "stddev_ms": 51.02724285684585,
           "tool": "ferret"
         }
       ]
@@ -95,19 +485,19 @@
       "pattern": "TODO",
       "timings": [
         {
-          "mean_ms": 829.1182500000001,
-          "median_ms": 821.504125,
-          "min_ms": 809.713875,
-          "peak_rss_mib": 16.578125,
-          "stddev_ms": 24.129898579420598,
+          "mean_ms": 844.5527749,
+          "median_ms": 840.8707294999999,
+          "min_ms": 808.8209580000001,
+          "peak_rss_mib": 16.4765625,
+          "stddev_ms": 34.03433582244937,
           "tool": "rg"
         },
         {
-          "mean_ms": 6296.110249666665,
-          "median_ms": 6308.2732080000005,
-          "min_ms": 6210.837541,
-          "peak_rss_mib": 79.578125,
-          "stddev_ms": 79.88869755031367,
+          "mean_ms": 6211.8329084,
+          "median_ms": 6197.5135205,
+          "min_ms": 6100.579334,
+          "peak_rss_mib": 79.7578125,
+          "stddev_ms": 83.93410085588673,
           "tool": "ferret"
         }
       ]
@@ -120,19 +510,19 @@
       "pattern": "struct file_operations",
       "timings": [
         {
-          "mean_ms": 831.7843610000001,
-          "median_ms": 832.1532080000001,
-          "min_ms": 826.48725,
-          "peak_rss_mib": 15.921875,
-          "stddev_ms": 5.122656493921241,
+          "mean_ms": 823.8524664,
+          "median_ms": 827.1950205,
+          "min_ms": 797.8280000000001,
+          "peak_rss_mib": 16.1875,
+          "stddev_ms": 15.72294665292015,
           "tool": "rg"
         },
         {
-          "mean_ms": 6348.414667,
-          "median_ms": 6328.403084,
-          "min_ms": 6293.644459,
-          "peak_rss_mib": 79.859375,
-          "stddev_ms": 67.05428921290853,
+          "mean_ms": 6143.920212399999,
+          "median_ms": 6141.5791455,
+          "min_ms": 6052.060041,
+          "peak_rss_mib": 79.7734375,
+          "stddev_ms": 47.94860277511344,
           "tool": "ferret"
         }
       ]
@@ -143,19 +533,19 @@
       "pattern": "[A-Z]{5}_[A-Z]{5}",
       "timings": [
         {
-          "mean_ms": 884.269222,
-          "median_ms": 886.7991660000001,
-          "min_ms": 874.559958,
-          "peak_rss_mib": 19.171875,
-          "stddev_ms": 8.72390565421334,
+          "mean_ms": 870.6010459000003,
+          "median_ms": 868.694021,
+          "min_ms": 836.6638340000001,
+          "peak_rss_mib": 18.84375,
+          "stddev_ms": 32.3365653323688,
           "tool": "rg"
         },
         {
-          "mean_ms": 6402.347806000001,
-          "median_ms": 6383.986084,
-          "min_ms": 6364.221834,
-          "peak_rss_mib": 79.78125,
-          "stddev_ms": 49.907925969667886,
+          "mean_ms": 6243.5399417,
+          "median_ms": 6232.304896000001,
+          "min_ms": 6160.698625,
+          "peak_rss_mib": 79.8046875,
+          "stddev_ms": 75.23752015498246,
           "tool": "ferret"
         }
       ]
@@ -168,19 +558,19 @@
       "pattern": "hello",
       "timings": [
         {
-          "mean_ms": 831.747097,
-          "median_ms": 830.435833,
-          "min_ms": 829.2486250000001,
-          "peak_rss_mib": 16.484375,
-          "stddev_ms": 3.3523024924800584,
+          "mean_ms": 825.491071,
+          "median_ms": 826.2012915000001,
+          "min_ms": 793.54475,
+          "peak_rss_mib": 16.859375,
+          "stddev_ms": 18.27142258379727,
           "tool": "rg"
         },
         {
-          "mean_ms": 6303.182541666668,
-          "median_ms": 6315.648875,
-          "min_ms": 6267.534000000001,
-          "peak_rss_mib": 79.59375,
-          "stddev_ms": 31.33402920905542,
+          "mean_ms": 6140.057258600001,
+          "median_ms": 6140.900958499999,
+          "min_ms": 6060.902542,
+          "peak_rss_mib": 79.671875,
+          "stddev_ms": 38.273633185452255,
           "tool": "ferret"
         }
       ]
@@ -191,23 +581,23 @@
       "pattern": "zzzznomatch",
       "timings": [
         {
-          "mean_ms": 815.7078336666667,
-          "median_ms": 817.3604590000001,
-          "min_ms": 794.7614590000001,
-          "peak_rss_mib": 16.171875,
-          "stddev_ms": 20.170901634610317,
+          "mean_ms": 827.3063874000002,
+          "median_ms": 820.4905625000001,
+          "min_ms": 812.5905000000001,
+          "peak_rss_mib": 16.15625,
+          "stddev_ms": 16.873121241870585,
           "tool": "rg"
         },
         {
-          "mean_ms": 6322.220846666667,
-          "median_ms": 6322.403291,
-          "min_ms": 6315.213333,
-          "peak_rss_mib": 79.671875,
-          "stddev_ms": 6.918096021597784,
+          "mean_ms": 6184.8697415999995,
+          "median_ms": 6181.586249999999,
+          "min_ms": 6110.007458,
+          "peak_rss_mib": 79.7578125,
+          "stddev_ms": 53.23685142438703,
           "tool": "ferret"
         }
       ]
     }
   ],
-  "runs": 3
+  "runs": 10
 }
