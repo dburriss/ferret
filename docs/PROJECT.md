@@ -32,7 +32,7 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 
 - Must not break muscle memory: plain `ferret <pattern>` behaves like `rg`.
 - Must work offline, with no service to run.
-- Lexical-only installs must stay small. The semantic ranker adds about 80 MB per platform (model plus native ONNX Runtime), so it cannot be a hard dependency.
+- Library users who only want lexical search must not pull in the semantic ranker. It adds ONNX Runtime and a model (about 80 MB per platform), so `Ferret.Semantic` is a separate package. The CLI includes it, in two distributions: one downloads the model on first use, one bundles it.
 - Indexes are disposable caches that rebuild lazily.
 
 ## Target users
@@ -59,7 +59,7 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
 
 - **Built:** `ferret --lex <terms> [path...] [--limit N] [--scores] [--jsonl]`. Reads files through a persisted index (see below; `--no-index` reads every file instead), over the same file walk and ignore rules as plain search. The tokenizer lowercases, splits on non-alphanumerics, drops stop words and applies light suffix stemming (`mock` matches `mocked`). Because stop words are dropped, a query that is only a stop word (`in`, `is`, `to`) returns nothing. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. `--scores` prefixes each line with `[score]` (4 decimals, e.g. `[2.4131] path:line:text`). `--jsonl` prints one JSON object per excerpt line (`file`, `line`, `score`, `text`) for agents. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit`, `--scores`, `--jsonl`, `--no-index` or `--timings` without `--lex` is a usage error.
-- **Built (timings):** `--timings` prints a table to stderr after the results (phase, ms, tags); stdout is unchanged. The library emits one `System.Diagnostics.Activity` per phase on the `Ferret` `ActivitySource` (no per-file spans, no OpenTelemetry packages; with no listener it costs nothing). Indexed phases: `ferret.index.load`, `ferret.enumerate` (list the files, applying ignore rules), `ferret.stamp` (one stat per file), `ferret.index.build` (read + tokenize new or changed files; tags `files.total`, `files.reused`, `files.built`), `ferret.rank`, `ferret.index.save` (`saved`, `entries`, `files.removed`), `ferret.excerpts`. With `--no-index`: `ferret.enumerate`, `ferret.read`, `ferret.rank`, `ferret.excerpts`.
+- **Built (timings):** `--timings` prints a table to stderr after the results (phase, ms, tags); stdout is unchanged. The library emits one `System.Diagnostics.Activity` per phase on the `Ferret` `ActivitySource` (no per-file spans, no OpenTelemetry packages; with no listener it costs nothing). Indexed phases: `ferret.index.load`, `ferret.enumerate` (list the files, applying ignore rules), `ferret.stamp` (one stat per file), `ferret.index.build` (read + tokenize new or changed files; tags `files.total`, `files.reused`, `files.built`), `ferret.rank`, `ferret.index.save` (`saved`, `entries`, `files.removed`), `ferret.excerpts`. With `--no-index`: `ferret.enumerate`, `ferret.read`, `ferret.rank`, `ferret.excerpts`. Semantic (`--sem`) runs emit `ferret.index.load`, `ferret.stamp`, `ferret.index.build`, `ferret.index.save`, `ferret.embed` (the query; tag `kind=query`), `ferret.rank` and `ferret.excerpts`. Tokenizing and inference interleave per chunk, so they are not activities of their own: `ferret.index.build` and `ferret.embed` carry the totals as tags `tokenize.ms`, `inference.ms` and `tokens`. The two do not sum to the phase time (file reads, chunking and pooling make up the rest).
 - **Built (index commands):** `ferret --index [path...]` builds or updates the persisted index without searching, so the first query does not pay for the build (it is no faster, just moved up front). `--index --clean` deletes the index and rebuilds it from scratch; `--clean` alone deletes it. A query with no index still builds it, as before; `--no-index` is the opt-out. They take paths only, so combining them with a pattern or any search flag is a usage error.
 - **Planned:** everything below that is not in the Built line: README and concept-file boosts, tag filtering, the `--status` command, an inverted index for large corpora, the table and json output.
 
@@ -93,13 +93,14 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 - Cache key includes ignore patterns and the normaliser version.
 - Incremental by file hash where feasible.
 
-### Semantic search — Future
+### Semantic search — Built (`--sem`)
 
 - Embedded ONNX model (`bge-small-en-v1.5`, int8), chunked by heading, then paragraph, then line or word.
 - Chunk hits roll up to files with `max` (best chunk per file) over a full scan. That chunk is the excerpt. Sum-based rollups are rejected because they favour long files.
 - Chunker fixes needed first: merge heading-only and front-matter chunks, or prefix chunks with a title and section breadcrumb.
-- First index is built off the query path.
-- Ships as a separate package or on-demand model download. Lexical-only builds work without it.
+- Behaves like lexical: `--sem` syncs the index on query, embedding only new or changed files, with progress on stderr. `--index --sem` pre-builds it.
+- One index file per search root, `semantic/<hash-of-root>.idx` under the cache dir, with vectors in a contiguous block. Load and rewrite cost is bounded by the searched tree, and projects never overwrite each other.
+- `Ferret.Semantic` is a separate library package and does not bundle the model. The CLI always includes it and ships two ways: the default downloads the int8 model and vocab on first `--sem` use into `models/<model-id>/` under the cache dir (`FERRET_MODEL_DIR` overrides, `FERRET_OFFLINE=1` disables the download, `ferret --model download` pre-fetches); a bundled build (`-p:BundleModel=true`) embeds them and works offline.
 - One fixed model for now. Choosing or switching models (for example a larger or code-specialised one, with an index rebuild) might come later.
 
 ### Hybrid search — Future
@@ -121,7 +122,7 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 
 - Boost magnitudes need tuning on a real corpus.
 - Stemmer conservatism versus false matches.
-- Whether hybrid beats BM25 on real content. The next experiment is BM25, semantic and RRF on the PoC queries and labels.
+- Whether hybrid beats BM25 on real content. First semantic numbers on the F# docs (nDCG@10, BM25 vs `--sem`): overall 0.863 vs 0.884, keyword 0.963 vs 0.961, question 0.721 vs 0.744, exact 0.905 vs 1.000. The next experiment is RRF on the same queries and labels.
 
 ## Related docs
 

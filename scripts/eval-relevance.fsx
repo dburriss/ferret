@@ -1,12 +1,18 @@
 // Runs Ferret's BM25 over fetched BEIR datasets and the F# docs set and prints nDCG@10, recall@100 and MRR@10.
 // Compares against benchmarks/relevance-baseline.json and exits 1 if nDCG@10 drops by more than the tolerance.
 // Build first: dotnet build -c Release src/Ferret
-// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity]
+// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity] [--ranker lex|sem]
 //   no dataset: run all. --update: write the measured scores as the new baseline.
+//   --ranker sem: semantic search instead of BM25 (downloads the model on first use and embeds every document, so
+//   fsharp-docs takes about a minute and SciFact/NFCorpus much longer). It has its own baseline file
+//   (benchmarks/relevance-baseline-sem.json), skips the parity check and is not logged.
 // Every query also runs through the persisted-index path (Search.searchIndexed, in-memory store) and must give
 // exactly the same files, order, scores and excerpts as the per-run path; any difference exits 1.
 // --no-parity skips that and times only the per-run path. A saved and reloaded index must equal the in-memory one.
 #r "../src/Ferret/bin/Release/net10.0/Ferret.dll"
+#r "../src/Ferret.Semantic/bin/Release/net10.0/Microsoft.ML.OnnxRuntime.dll"
+#r "../src/Ferret.Semantic/bin/Release/net10.0/Microsoft.ML.Tokenizers.dll"
+#r "../src/Ferret.Semantic/bin/Release/net10.0/Ferret.Semantic.dll"
 
 open System
 open System.IO
@@ -16,14 +22,27 @@ open Ferret.FileSource
 
 let tolerance = 0.01
 let root = Path.Combine(__SOURCE_DIRECTORY__, "..") |> Path.GetFullPath
-let baselinePath = Path.Combine(root, "benchmarks", "relevance-baseline.json")
 
 let args = fsi.CommandLineArgs |> Array.skip 1 |> List.ofArray
 let update = List.contains "--update" args
 
-let parity = not (List.contains "--no-parity" args)
+let semantic =
+    match args |> List.tryFindIndex ((=) "--ranker") with
+    | Some i when i + 1 < args.Length && args[i + 1] = "sem" -> true
+    | Some i when i + 1 < args.Length && args[i + 1] = "lex" -> false
+    | Some _ -> failwith "--ranker takes lex or sem"
+    | None -> false
 
-let requested = args |> List.filter (fun a -> a <> "--update" && a <> "--no-parity")
+let baselinePath =
+    Path.Combine(root, "benchmarks", if semantic then "relevance-baseline-sem.json" else "relevance-baseline.json")
+
+// Semantic results come from an index that is built once, so there is no per-run path to compare with.
+let parity = not semantic && not (List.contains "--no-parity" args)
+
+let requested =
+    args
+    |> List.filter (fun a -> a <> "--update" && a <> "--no-parity")
+    |> List.filter (fun a -> a <> "--ranker" && a <> "lex" && a <> "sem")
 let fullRun = requested.IsEmpty
 let names = if fullRun then [ "scifact"; "nfcorpus"; "fsharp-docs" ] else requested
 
@@ -108,6 +127,22 @@ let timed (watch: Diagnostics.Stopwatch) f =
     watch.Stop()
     result
 
+let cacheDir = Path.Combine(Path.GetTempPath(), "ferret-eval-sem")
+
+// Created once, and only for --ranker sem.
+let embedder =
+    lazy
+        (Semantic.ModelLocator.resolve (eprintfn "%s") (Path.GetDirectoryName(DiskIndexStore.defaultPath ()))
+         |> Semantic.ModelLocator.load)
+
+let ignore2 (_: int) (_: int) = ()
+
+let rank (store: Index.MemoryIndexStore) (text: string) docs =
+    if semantic then
+        Semantic.SemanticSearch.search cacheDir embedder ignore2 files docs text 100
+    else
+        Search.search Ranking.bm25 files [ docs ] text 100
+
 let evaluate name =
     let ds = if name = "fsharp-docs" then loadFsharpDocs () else loadBeir name
     let sw = Diagnostics.Stopwatch.StartNew()
@@ -121,7 +156,7 @@ let evaluate name =
         |> Array.choose (fun (id, text, kind) ->
             ds.qrels.TryFind id
             |> Option.map (fun rel ->
-                let results = timed perRun (fun () -> Search.search Ranking.bm25 files [ ds.docs ] text 100)
+                let results = timed perRun (fun () -> rank store text ds.docs)
                 if parity then
                     let fromIndex =
                         timed viaIndex (fun () -> Search.searchIndexed store Ranking.bm25 files [ ds.docs ] text 100)
@@ -251,8 +286,8 @@ if parityFailures.Count > 0 then
     parityFailures |> Seq.iter (eprintfn "PARITY %s")
     exit 1
 
-// Partial runs are not logged: they would block the full run for the same inputs.
-if fullRun then logRun ()
+// Partial runs are not logged: they would block the full run for the same inputs. Neither are semantic runs.
+if fullRun && not semantic then logRun ()
 
 if update then
     let merged = results |> List.fold (fun m (n, s, _, _) -> Map.add n s m) baseline

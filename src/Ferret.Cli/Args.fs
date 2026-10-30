@@ -15,6 +15,8 @@ type FerretArgs =
     | Index
     | Clean
     | Lex
+    | Sem
+    | Model of action: string
     | Limit of count: int
     | Scores
     | Jsonl
@@ -33,14 +35,16 @@ type FerretArgs =
             | Count -> "print the number of matching lines per file."
             | Word_Regexp -> "only match whole words."
             | Version -> "print the version."
-            | Index -> "build or update the persisted index without searching. With --clean, rebuild it from scratch."
-            | Clean -> "delete the persisted index. With --index, rebuild it afterwards."
+            | Index -> "build or update the persisted index without searching. With --sem, the semantic index. With --clean, rebuild it from scratch."
+            | Clean -> "delete the persisted indexes (lexical and semantic). With --index, rebuild it afterwards."
             | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
-            | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
-            | Scores -> "with --lex, prefix each result line with its relevance score."
-            | Jsonl -> "with --lex, print one JSON object per result line (file, line, score, text)."
+            | Sem -> "ranked semantic (embedding) search: the first positional is the query. Downloads the model on first use and builds the index as needed."
+            | Model _ -> "`download` fetches the semantic model into the cache so --sem can run offline. FERRET_MODEL_DIR points at an existing model."
+            | Limit _ -> "with --lex or --sem, the maximum number of files to return (default: 100)."
+            | Scores -> "with --lex or --sem, prefix each result line with its relevance score."
+            | Jsonl -> "with --lex or --sem, print one JSON object per result line (file, line, score, text)."
             | No_Index -> "with --lex, ignore the persisted index and read every file."
-            | Timings -> "with --lex, print the time spent in each phase to stderr."
+            | Timings -> "with --lex or --sem, print the time spent in each phase to stderr."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

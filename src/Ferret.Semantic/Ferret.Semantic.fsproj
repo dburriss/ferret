@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>0.1.0</Version>
+    <PackageId>Ferret.Semantic</PackageId>
+    <Description>Semantic (embedding) search for Ferret: ONNX embedder, chunker and ranker.</Description>
+    <!-- scripts/eval-relevance.fsx references the built dll directly and needs the ONNX and tokenizer dlls beside it. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Embedder.fs" />
+    <Compile Include="Chunker.fs" />
+    <Compile Include="ModelLocator.fs" />
+    <Compile Include="VectorStore.fs" />
+    <Compile Include="SemanticSearch.fs" />
+  </ItemGroup>
+
+  <!-- Building with BundleModel=true embeds the int8 model and vocab from models/ (the two files the model download
+       fetches), so the build works offline. Without it the model is downloaded on first use. -->
+  <ItemGroup Condition="'$(BundleModel)' == 'true'">
+    <EmbeddedResource Include="models/model_quantized.onnx" LogicalName="model.onnx" />
+    <EmbeddedResource Include="models/vocab.txt" LogicalName="vocab.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ferret\Ferret.fsproj" />
+  </ItemGroup>
+
+</Project>

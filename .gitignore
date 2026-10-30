@@ -57,3 +57,6 @@ TestResult.xml
 nunit-*.xml
 /corpus/
 benchmarks/data/
+
+# Model files for the bundled build (-p:BundleModel=true)
+src/Ferret.Semantic/models/

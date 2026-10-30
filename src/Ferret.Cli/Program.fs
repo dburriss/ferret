@@ -34,7 +34,7 @@ let private toGrepArgs (r: ParseResults<FerretArgs>) (afterSeparator: string lis
 let private defaultLimit = 100
 
 /// Ranked search arguments, or a usage error. Regex-only flags make no sense with terms.
-let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string list) =
+let private toRankedArgs (mode: string) (r: ParseResults<FerretArgs>) (afterSeparator: string list) =
     let regexOnly =
         [ r.Contains Ignore_Case, "-i"
           r.Contains Fixed_Strings, "-F"
@@ -43,9 +43,9 @@ let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string l
           r.Contains Count, "-c" ]
         |> List.tryFind fst
     match regexOnly, r.TryGetResult Limit, r.GetResults Positional @ afterSeparator with
-    | Some(_, name), _, _ -> Error $"{name} cannot be used with --lex"
+    | Some(_, name), _, _ -> Error $"{name} cannot be used with {mode}"
     | _, Some limit, _ when limit < 1 -> Error "--limit must be at least 1"
-    | _, _, [] -> Error "--lex needs query terms"
+    | _, _, [] -> Error $"{mode} needs query terms"
     | _, limit, query :: paths ->
         Ok
             { Query = query
@@ -60,6 +60,7 @@ let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string l
 let private toMaintenanceArgs (r: ParseResults<FerretArgs>) (afterSeparator: string list) =
     let conflicting =
         [ r.Contains Lex, "--lex"
+          r.Contains Model, "--model"
           r.Contains No_Index, "--no-index"
           r.Contains Limit, "--limit"
           r.Contains Scores, "--scores"
@@ -101,32 +102,59 @@ let main argv =
         | None ->
             match parsed with
             | VersionCmd() -> version ()
+            | _ when parsed.Contains Lex && parsed.Contains Sem ->
+                eprintfn "ferret: --lex and --sem cannot be used together"
+                2
+            | _ when parsed.Contains Model ->
+                match parsed.GetResult Model with
+                | "download" when parsed.GetAllResults().Length = 1 -> RankedCli.downloadModel (AdapterDeps.create isDebug)
+                | "download" ->
+                    eprintfn "ferret: --model download takes no other arguments"
+                    2
+                | other ->
+                    eprintfn "ferret: unknown --model action '%s' (expected 'download')" other
+                    2
             | _ when parsed.Contains Index || parsed.Contains Clean ->
                 match toMaintenanceArgs parsed afterSeparator with
-                | Ok cmd -> MaintenanceCli.run (AdapterDeps.create isDebug) cmd
+                | Ok cmd when parsed.Contains Sem -> MaintenanceCli.runSemantic (AdapterDeps.create isDebug) cmd
+                | Ok cmd ->
+                    let code = MaintenanceCli.run (AdapterDeps.create isDebug) cmd
+                    // A bare --clean removes every index; with --index it rebuilds the lexical one only.
+                    if cmd.Clean && not cmd.Index then MaintenanceCli.clearSemantic ()
+                    code
                 | Error message ->
                     eprintfn "ferret: %s" message
                     2
             | _ when parsed.Contains Lex ->
-                match toRankedArgs parsed afterSeparator with
+                match toRankedArgs "--lex" parsed afterSeparator with
                 | Ok cmd -> RankedCli.run (AdapterDeps.create isDebug) cmd
                 | Error message ->
                     eprintfn "ferret: %s" message
                     2
+            | _ when parsed.Contains Sem ->
+                if parsed.Contains No_Index then
+                    eprintfn "ferret: --no-index cannot be used with --sem"
+                    2
+                else
+                    match toRankedArgs "--sem" parsed afterSeparator with
+                    | Ok cmd -> RankedCli.runSemantic (AdapterDeps.create isDebug) cmd
+                    | Error message ->
+                        eprintfn "ferret: %s" message
+                        2
             | _ when parsed.Contains Limit ->
-                eprintfn "ferret: --limit requires --lex"
+                eprintfn "ferret: --limit requires --lex or --sem"
                 2
             | _ when parsed.Contains Scores ->
-                eprintfn "ferret: --scores requires --lex"
+                eprintfn "ferret: --scores requires --lex or --sem"
                 2
             | _ when parsed.Contains Jsonl ->
-                eprintfn "ferret: --jsonl requires --lex"
+                eprintfn "ferret: --jsonl requires --lex or --sem"
                 2
             | _ when parsed.Contains No_Index ->
-                eprintfn "ferret: --no-index requires --lex"
+                eprintfn "ferret: --no-index requires --lex or --sem"
                 2
             | _ when parsed.Contains Timings ->
-                eprintfn "ferret: --timings requires --lex"
+                eprintfn "ferret: --timings requires --lex or --sem"
                 2
             | _ ->
                 match toGrepArgs parsed afterSeparator with
@@ -137,6 +165,9 @@ let main argv =
     with
     | :? ArguParseException as ex ->
         eprintfn "%s" ex.Message
+        2
+    | Ferret.Semantic.ModelUnavailable message ->
+        eprintfn "ferret: %s" message
         2
     | ex ->
         let isDebug = argv |> Array.contains "--debug"

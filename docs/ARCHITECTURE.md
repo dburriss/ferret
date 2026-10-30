@@ -13,7 +13,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 
 - **Pure core, effects at the edge.** Scoring, tokenising, ranking and rollup are pure functions. File system, cache and model I/O sit behind interfaces supplied by the caller.
 - **One engine, many front ends.** The CLI, Eru's MCP server and embedding apps all call the same search API.
-- **Lexical stays small.** Semantic search is a separate package so lexical-only installs avoid the ~80 MB model and ONNX Runtime.
+- **Lexical stays small.** Semantic search is a separate package so library users who only want lexical search avoid the ~80 MB model and ONNX Runtime. The CLI includes it, as a downloading build and a bundled build.
 - **Indexes are disposable.** Everything under the cache can be deleted and rebuilt lazily.
 
 ## Library: `Ferret`
@@ -33,7 +33,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Index` | Index entries, the `IIndexStore` port, version check (built per file; searched via `Search.searchIndexed`) | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run `search`, and `searchIndexed` over a persisted index), `Index` (`Entry`, `Snapshot`, `IIndexStore`, `MemoryIndexStore`, `Index.version`), `DiskIndexStore` (binary file, atomic save). `Search.buildIndex` (build without ranking; `IIndexStore.Clear`). **Planned:** the `--status` command and an inverted index. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run `search`, and `searchIndexed` over a persisted index), `Index` (`Entry`, `Snapshot`, `IIndexStore`, `MemoryIndexStore`, `Index.version`), `DiskIndexStore` (binary file, atomic save). `Search.buildIndex` (build without ranking; `IIndexStore.Clear`). **Planned:** the `--status` command and an inverted index. **Future:** hybrid fusion, RRF. `Ferret.Semantic` (separate package, below) is built.
 
 ### Ports
 
@@ -43,7 +43,7 @@ The library defines interfaces. Callers provide adapters.
 |------|---------|
 | `IFileSource` | `Kind` (missing, file, directory), `Enumerate` a root, `ReadLines` of a file, `ReadStdin` (**Built**) |
 | `IIndexStore` | Persist and load the cache (index, stats, version) |
-| `IEmbedder` | Embed text to vectors (**Future**, semantic package only) |
+| `IEmbedder` | Embed text to vectors (**Built**, semantic package only: `OnnxEmbedder`) |
 
 The default adapters (disk file source, on-disk index store) ship in the library so embedding is a one-liner, but nothing in the core depends on them. `DiskFileSource` and `DiskIndexStore` exist. `IFileSource.Stamp` gives the change fingerprint index entries are checked against.
 
@@ -98,7 +98,7 @@ type Ranker = Query -> Candidate list -> ScoredDoc list
 ```
 
 - `Ranking.bm25`: **Built.** `K1 = 1.2`, `B = 0.75`, non-negative IDF, score multiplied by `Bm25.boost` (named per-field constants: path 0.3, heading 0.5, frontmatter title 0.5, description 0.3, tags 0.5, each scaled by the share of query terms in that field), ties broken by ordinal path. Headings and frontmatter are read only from `.md`/`.markdown`/`.mdx` files (`Ferret.Markdown`); README and concept-file boosts are not built.
-- `Semantic.ranker`: **Future.** Chunk by heading, paragraph, then line or word. Roll chunk hits up to files with `max`. The best chunk is the excerpt.
+- `SemanticSearch` (in `Ferret.Semantic`): **Built.** Chunk by heading, then paragraph, then line or word, merging heading-only and front-matter sections and prefixing each chunk with `title > heading path`. Score every chunk with a dot product, roll chunk hits up to files with `max`, and use the best chunk's first lines as the excerpt. It has its own entry points (`search`, `build`) rather than the `Ranker` seam, because it ranks chunk vectors, not `Candidate`s.
 - `Ranking.fuse`: **Future.** Reciprocal rank fusion, `k = 60`, optional weights, top 50-100 per ranker.
 
 ### Index and cache
@@ -106,14 +106,14 @@ type Ranker = Query -> Candidate list -> ScoredDoc list
 - Disposable. Built on first use, rebuilt when the index version changes.
 - Built for lexical: entries are per file and keyed by full path, so ignore rules are applied by the walk on every run rather than baked into the cache key. The version is `FormatVersion * 1000 + NormaliserVersion`.
 - Incremental by file hash where feasible.
-- First semantic index is built off the query path.
+- The semantic index is synced on query like the lexical one (only new or changed files are embedded), with one file per search root. `--index --sem` pre-builds it.
 
 ### Packages
 
 | Package | Contents |
 |---------|----------|
 | `Ferret` | Core, BM25, default adapters |
-| `Ferret.Semantic` | ONNX embedder (`bge-small-en-v1.5`, int8), chunker, semantic ranker (**Future**) |
+| `Ferret.Semantic` | ONNX embedder (`bge-small-en-v1.5`, int8), chunker, model locator and downloader, per-root vector store, semantic search (**Built**) |
 | `Ferret.Cli` | The `ferret` tool |
 
 ## CLI: `Ferret.Cli`
@@ -125,7 +125,7 @@ Modelled on [Eru.Cli](https://github.com/dburriss/eru/blob/main/src/Eru.Cli/Prog
 ```
 ferret <pattern> [path...]            # plain grep, rg-compatible
 ferret --lex "retries aws" docs/      # BM25 ranked
-ferret --sem "retries aws" docs/      # semantic (Future)
+ferret --sem "retries aws" docs/      # semantic
 ferret --hybrid "retries aws" docs/   # BM25 + semantic via RRF (Future)
 ferret --index [--clean] [path...]    # build or fully rebuild the index (optional, queries still build lazily)
 ferret --clean                        # delete the index
@@ -147,7 +147,7 @@ src/Ferret.Cli/
   Program.fs         entry point, mode selection, dispatch
 ```
 
-**Built:** `Args`, `Deps`, `GrepCli`, `RankedCli` (`--lex`, `--limit` default 100, and `--scores`), `Output` (text only, with an optional `[score]` prefix) and `Program`, with `--version` handled inline in `Program.fs`. **Planned:** `--sem`/`--hybrid` in `RankedCli`, `MaintenanceCli`, `VersionCli` and the other renderers. Plain mode supports `-i`, `-F`, `-n`, `-l`, `-c`, `-w`, `-V` and `--debug`.
+**Built:** `Args`, `Deps`, `GrepCli`, `RankedCli` (`--lex`, `--limit` default 100, and `--scores`), `Output` (text only, with an optional `[score]` prefix) and `Program`, with `--version` handled inline in `Program.fs`. `--sem` (with `--index --sem`, `--clean --sem` and `--model download`). **Planned:** `--hybrid` in `RankedCli`, `MaintenanceCli`, `VersionCli` and the other renderers. Plain mode supports `-i`, `-F`, `-n`, `-l`, `-c`, `-w`, `-V` and `--debug`.
 
 The assembly is `Ferret.Cli`, not `ferret`: `ferret.dll` would collide with the library's `Ferret.dll` on case-insensitive file systems. The installed command is still `ferret` (`ToolCommandName`).
 
