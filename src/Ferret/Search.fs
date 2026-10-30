@@ -145,9 +145,113 @@ let private isUnder (roots: (string * bool) list) (key: string) =
         if isDir then key.StartsWith(root.TrimEnd IO.Path.DirectorySeparatorChar + string IO.Path.DirectorySeparatorChar)
         else key = root)
 
+/// Brings `store` up to date with the files under `roots`: reads only files that are new or changed
+/// since the last run. Entries for files that have gone from the searched roots are dropped;
+/// entries elsewhere are kept. A snapshot from other code (`Index.version`) is ignored. Returns
+/// `project path entry` for every indexed file. With `terms`, a store that can load per query gives
+/// entries trimmed to those terms, which is enough to project from.
+let private sync
+    (store: Index.IIndexStore)
+    (files: IFileSource)
+    (roots: string list)
+    (terms: string list option)
+    (project: string -> Index.Entry -> 'a)
+    : 'a list =
+    // A trimmed load is enough to rank, not to save. Changes are tracked so a save can apply them
+    // to the full snapshot.
+    let trimmed = ref false
+    let entries =
+        phase "ferret.index.load" (fun a ->
+            let loaded =
+                match store, terms with
+                | (:? Index.IQueryIndexStore as q), Some terms ->
+                    let loaded = q.LoadFor terms
+                    trimmed.Value <- loaded.IsSome
+                    loaded
+                | _ -> store.Load()
+            let loaded = loaded |> Option.filter (fun s -> s.Version = Index.version)
+            tag a "loaded" loaded.IsSome
+            match loaded with
+            | Some s ->
+                tag a "entries" s.Entries.Count
+                Collections.Generic.Dictionary<string, Index.Entry>(s.Entries)
+            | None -> Collections.Generic.Dictionary<string, Index.Entry>())
+    // Stamp first, then read: a file changed while being read then looks stale on the next run.
+    let paths =
+        phase "ferret.enumerate" (fun a ->
+            let paths = roots |> Seq.collect files.Enumerate |> Seq.distinct |> List.ofSeq
+            tag a "files" paths.Length
+            paths)
+    let walked =
+        phase "ferret.stamp" (fun a ->
+            let walked = paths |> List.map (fun path -> path, entryKey path, files.Stamp path)
+            tag a "files" walked.Length
+            walked)
+    let seen = Collections.Generic.HashSet<string>()
+    let fresh = Collections.Generic.Dictionary<string, Index.Entry>()
+    let dropped = Collections.Generic.HashSet<string>()
+    let mutable changed = false
+    let mutable reused = 0
+    let mutable built = 0
+    let projected =
+        phase "ferret.index.build" (fun a ->
+            let projected =
+                walked
+                |> List.choose (fun (path, key, stamp) ->
+                    match entries.TryGetValue key with
+                    | true, entry when stamp = Some entry.Stamp ->
+                        seen.Add key |> ignore
+                        reused <- reused + 1
+                        Some(project path entry)
+                    | cached, _ ->
+                        match stamp |> Option.bind (buildEntry files path) with
+                        | Some entry ->
+                            seen.Add key |> ignore
+                            entries[key] <- entry
+                            fresh[key] <- entry
+                            changed <- true
+                            built <- built + 1
+                            Some(project path entry)
+                        | None ->
+                            // A file that cannot be read and has no entry changes nothing.
+                            if cached then
+                                entries.Remove key |> ignore
+                                fresh.Remove key |> ignore
+                                dropped.Add key |> ignore
+                                changed <- true
+                            None)
+            tag a "files.total" walked.Length
+            tag a "files.reused" reused
+            tag a "files.built" built
+            projected)
+    let searched =
+        roots |> List.map (fun r -> entryKey (if r = "" then "." else r), files.Kind r = IsDirectory)
+    let gone = entries.Keys |> Seq.filter (fun k -> not (seen.Contains k) && isUnder searched k) |> List.ofSeq
+    for key in gone do
+        entries.Remove key |> ignore
+        dropped.Add key |> ignore
+    phase "ferret.index.save" (fun a ->
+        let save = changed || not gone.IsEmpty
+        tag a "saved" save
+        tag a "entries" entries.Count
+        tag a "files.removed" gone.Length
+        if save then
+            if not trimmed.Value then
+                store.Save { Version = Index.version; Entries = entries }
+            else
+                // Only a full snapshot can be saved: load it and apply what this run changed.
+                match store.Load() |> Option.filter (fun s -> s.Version = Index.version) with
+                | Some full ->
+                    for key in dropped do
+                        full.Entries.Remove key |> ignore
+                    for KeyValue(key, entry) in fresh do
+                        full.Entries[key] <- entry
+                    store.Save full
+                | None -> ())
+    projected
+
 /// Same results as `search`, but reads only files that are new or changed since the last run and
-/// keeps what it learned in `store`. Entries for files that have gone from the searched roots are
-/// dropped; entries elsewhere are kept. A snapshot from other code (`Index.version`) is ignored.
+/// keeps what it learned in `store` (see `sync`).
 let searchIndexed
     (store: Index.IIndexStore)
     (ranker: Ranking.Ranker)
@@ -161,95 +265,10 @@ let searchIndexed
         []
     else
         let termSet = Set.ofList terms
-        // A store that can load per query gives entries trimmed to the query terms: enough to rank,
-        // not to save. Changes are tracked so a save can apply them to the full snapshot.
-        let trimmed = ref false
-        let entries =
-            phase "ferret.index.load" (fun a ->
-                let loaded =
-                    match store with
-                    | :? Index.IQueryIndexStore as q ->
-                        let loaded = q.LoadFor terms
-                        trimmed.Value <- loaded.IsSome
-                        loaded
-                    | _ -> store.Load()
-                let loaded = loaded |> Option.filter (fun s -> s.Version = Index.version)
-                tag a "loaded" loaded.IsSome
-                match loaded with
-                | Some s ->
-                    tag a "entries" s.Entries.Count
-                    Collections.Generic.Dictionary<string, Index.Entry>(s.Entries)
-                | None -> Collections.Generic.Dictionary<string, Index.Entry>())
-        // Stamp first, then read: a file changed while being read then looks stale on the next run.
-        let paths =
-            phase "ferret.enumerate" (fun a ->
-                let paths = roots |> Seq.collect files.Enumerate |> Seq.distinct |> List.ofSeq
-                tag a "files" paths.Length
-                paths)
-        let walked =
-            phase "ferret.stamp" (fun a ->
-                let walked = paths |> List.map (fun path -> path, entryKey path, files.Stamp path)
-                tag a "files" walked.Length
-                walked)
-        let seen = Collections.Generic.HashSet<string>()
-        let fresh = Collections.Generic.Dictionary<string, Index.Entry>()
-        let dropped = Collections.Generic.HashSet<string>()
-        let mutable changed = false
-        let mutable reused = 0
-        let mutable built = 0
-        let candidates =
-            phase "ferret.index.build" (fun a ->
-                let candidates =
-                    walked
-                    |> List.choose (fun (path, key, stamp) ->
-                        match entries.TryGetValue key with
-                        | true, entry when stamp = Some entry.Stamp ->
-                            seen.Add key |> ignore
-                            reused <- reused + 1
-                            Some(candidateOf terms termSet path entry)
-                        | cached, _ ->
-                            match stamp |> Option.bind (buildEntry files path) with
-                            | Some entry ->
-                                seen.Add key |> ignore
-                                entries[key] <- entry
-                                fresh[key] <- entry
-                                changed <- true
-                                built <- built + 1
-                                Some(candidateOf terms termSet path entry)
-                            | None ->
-                                // A file that cannot be read and has no entry changes nothing.
-                                if cached then
-                                    entries.Remove key |> ignore
-                                    fresh.Remove key |> ignore
-                                    dropped.Add key |> ignore
-                                    changed <- true
-                                None)
-                tag a "files.total" walked.Length
-                tag a "files.reused" reused
-                tag a "files.built" built
-                candidates)
-        let searched =
-            roots |> List.map (fun r -> entryKey (if r = "" then "." else r), files.Kind r = IsDirectory)
-        let gone = entries.Keys |> Seq.filter (fun k -> not (seen.Contains k) && isUnder searched k) |> List.ofSeq
-        for key in gone do
-            entries.Remove key |> ignore
-            dropped.Add key |> ignore
-        phase "ferret.index.save" (fun a ->
-            let save = changed || not gone.IsEmpty
-            tag a "saved" save
-            tag a "entries" entries.Count
-            tag a "files.removed" gone.Length
-            if save then
-                if not trimmed.Value then
-                    store.Save { Version = Index.version; Entries = entries }
-                else
-                    // Only a full snapshot can be saved: load it and apply what this run changed.
-                    match store.Load() |> Option.filter (fun s -> s.Version = Index.version) with
-                    | Some full ->
-                        for key in dropped do
-                            full.Entries.Remove key |> ignore
-                        for KeyValue(key, entry) in fresh do
-                            full.Entries[key] <- entry
-                        store.Save full
-                    | None -> ())
+        let candidates = sync store files roots (Some terms) (candidateOf terms termSet)
         rank ranker files query terms limit candidates
+
+/// Builds or updates `store` for the files under `roots` without ranking anything, so a later
+/// `searchIndexed` finds a warm cache. Returns the number of files indexed.
+let buildIndex (store: Index.IIndexStore) (files: IFileSource) (roots: string list) : int =
+    sync store files roots None (fun _ _ -> ()) |> List.length

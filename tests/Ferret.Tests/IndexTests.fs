@@ -244,7 +244,8 @@ let ``a warm run saves nothing when a file cannot be read`` () =
                 member _.Load() = (memory :> IIndexStore).Load()
                 member _.Save s =
                     saves.Value <- saves.Value + 1
-                    (memory :> IIndexStore).Save s }
+                    (memory :> IIndexStore).Save s
+                member _.Clear() = (memory :> IIndexStore).Clear() }
         let run () = Search.searchIndexed store Ranking.bm25 unreadable [ root ] "apple" 100 |> ignore
         run ()
         Assert.Equal(1, saves.Value)
@@ -312,3 +313,51 @@ let ``a query-scoped load of a missing, garbage or other-version file is None`` 
         indexed memory d "apple" |> ignore
         (store :> IIndexStore).Save { memory.Current.Value with Version = version + 1 }
         Assert.True((store.LoadFor [ "apple" ]).IsNone))
+
+[<Fact>]
+let ``buildIndex warms the cache so a query builds no entries`` () =
+    withTree [ "a.txt", "apple\n"; "b.txt", "apple banana\n" ] (fun d ->
+        let store = MemoryIndexStore()
+        Assert.Equal(2, Search.buildIndex store disk [ d ])
+        let results = ref []
+        let phases = withPhases (fun () -> results.Value <- indexed store d "apple")
+        assertSame (perRun d "apple") results.Value
+        let build = phases |> List.find (fun a -> a.OperationName = "ferret.index.build")
+        Assert.Equal(box 0, tagOf "files.built" build)
+        Assert.Equal(box 2, tagOf "files.reused" build))
+
+[<Fact>]
+let ``buildIndex rereads only changed files`` () =
+    withTree [ "a.txt", "apple\n"; "b.txt", "banana\n" ] (fun d ->
+        let store = MemoryIndexStore()
+        let files, reads = counting ()
+        Search.buildIndex store files [ d ] |> ignore
+        reads.Value <- 0
+        Search.buildIndex store files [ d ] |> ignore
+        Assert.Equal(0, reads.Value)
+        File.WriteAllText(Path.Combine(d, "a.txt"), "apple pie\n")
+        Search.buildIndex store files [ d ] |> ignore
+        Assert.Equal(1, reads.Value))
+
+[<Fact>]
+let ``Clear removes the disk cache and tolerates a missing one`` () =
+    withTree [ "src/a.txt", "apple\n" ] (fun d ->
+        let cache = Path.Combine(d, "cache.idx")
+        let store = DiskIndexStore.DiskIndexStore cache :> IIndexStore
+        store.Clear()
+        Search.buildIndex store disk [ Path.Combine(d, "src") ] |> ignore
+        Assert.True(File.Exists cache)
+        store.Clear()
+        Assert.False(File.Exists cache)
+        Assert.True(store.Load().IsNone))
+
+[<Fact>]
+let ``a cleared cache is rebuilt from every file`` () =
+    withTree [ "a.txt", "apple\n"; "b.txt", "banana\n" ] (fun d ->
+        let store = MemoryIndexStore()
+        let files, reads = counting ()
+        Search.buildIndex store files [ d ] |> ignore
+        reads.Value <- 0
+        (store :> IIndexStore).Clear()
+        Search.buildIndex store files [ d ] |> ignore
+        Assert.Equal(2, reads.Value))

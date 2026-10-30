@@ -33,7 +33,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Index` | Index entries, the `IIndexStore` port, version check (built per file; searched via `Search.searchIndexed`) | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run `search`, and `searchIndexed` over a persisted index), `Index` (`Entry`, `Snapshot`, `IIndexStore`, `MemoryIndexStore`, `Index.version`), `DiskIndexStore` (binary file, atomic save). **Planned:** the `--index`/`--clean`/`--status` commands and an inverted index. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run `search`, and `searchIndexed` over a persisted index), `Index` (`Entry`, `Snapshot`, `IIndexStore`, `MemoryIndexStore`, `Index.version`), `DiskIndexStore` (binary file, atomic save). `Search.buildIndex` (build without ranking; `IIndexStore.Clear`). **Planned:** the `--status` command and an inverted index. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
 
 ### Ports
 
@@ -127,8 +127,9 @@ ferret <pattern> [path...]            # plain grep, rg-compatible
 ferret --lex "retries aws" docs/      # BM25 ranked
 ferret --sem "retries aws" docs/      # semantic (Future)
 ferret --hybrid "retries aws" docs/   # BM25 + semantic via RRF (Future)
-ferret --index [--clean]              # build or fully rebuild the index (optional, builds lazily)
-ferret --status | --inspect <file>    # index state, chunk/token inspection
+ferret --index [--clean] [path...]    # build or fully rebuild the index (optional, queries still build lazily)
+ferret --clean                        # delete the index
+ferret --status | --inspect <file>    # index state, chunk/token inspection (Planned)
 ferret --version
 ```
 
@@ -243,4 +244,3 @@ let main argv =
 ## Open questions
 
 - **CI: stdin detection is only verified on macOS (arm64).** Add a CI matrix (Linux x64, Linux arm64 if available, Windows, macOS) that runs the real binary for each case: pipe, empty pipe, `< nonempty file`, `< emptyfile`, `< /dev/null` (`< NUL` on Windows), and a terminal if one can be allocated. Expected: pipe and non-empty file search stdin, empty pipe and empty file exit 1, `/dev/null` searches the current directory. The Linux offsets, the `__fxstat` fallback (needs an image with glibc before 2.33, or musl) and the Windows path have never been run. The unit tests only cover the mode decision, not the syscall.
-- `--clean` is only meaningful with `--index`. Decide whether it errors alone or deletes the cache.

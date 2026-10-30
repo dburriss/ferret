@@ -202,6 +202,9 @@ type DiskIndexStore(path: string) =
             with :? IOException | :? UnauthorizedAccessException ->
                 try File.Delete temp with _ -> ()
 
+        member _.Clear() =
+            try File.Delete path with :? IOException | :? UnauthorizedAccessException -> ()
+
     interface IQueryIndexStore with
         member _.LoadFor terms =
             try

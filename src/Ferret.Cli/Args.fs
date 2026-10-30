@@ -12,6 +12,8 @@ type FerretArgs =
     | [<AltCommandLine("-c")>] Count
     | [<AltCommandLine("-w")>] Word_Regexp
     | [<AltCommandLine("-V")>] Version
+    | Index
+    | Clean
     | Lex
     | Limit of count: int
     | Scores
@@ -31,6 +33,8 @@ type FerretArgs =
             | Count -> "print the number of matching lines per file."
             | Word_Regexp -> "only match whole words."
             | Version -> "print the version."
+            | Index -> "build or update the persisted index without searching. With --clean, rebuild it from scratch."
+            | Clean -> "delete the persisted index. With --index, rebuild it afterwards."
             | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
             | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
             | Scores -> "with --lex, prefix each result line with its relevance score."

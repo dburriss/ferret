@@ -429,3 +429,42 @@ let ``lex gives the same output with and without the index`` () =
         let _, indexed, _ = runRanked args
         let _, direct, _ = runRanked { args with NoIndex = true }
         Assert.Equal(direct, indexed))
+
+let private runMaintenance (args: MaintenanceCli.MaintenanceArgs) (store: Ferret.Index.MemoryIndexStore) =
+    let out = new StringWriter()
+    let err = new StringWriter()
+    let deps =
+        { Files = DiskFileSource()
+          Out = out
+          Err = err
+          Index = store
+          StdinIsReadable = false
+          IsDebug = false }
+    let code = MaintenanceCli.run deps args
+    code, out.ToString().Trim(), err.ToString().Trim()
+
+[<Fact>]
+let ``index builds the cache and reports the file count`` () =
+    withTree [ "a.txt", "apple\n"; "b.txt", "banana\n" ] (fun d ->
+        let store = Ferret.Index.MemoryIndexStore()
+        let code, out, _ = runMaintenance { Index = true; Clean = false; Paths = [ d ] } store
+        Assert.Equal(0, code)
+        Assert.Equal("indexed 2 files", out)
+        Assert.Equal(2, store.Current.Value.Entries.Count))
+
+[<Fact>]
+let ``clean alone removes the cache without rebuilding`` () =
+    withTree [ "a.txt", "apple\n" ] (fun d ->
+        let store = Ferret.Index.MemoryIndexStore()
+        runMaintenance { Index = true; Clean = false; Paths = [ d ] } store |> ignore
+        let code, out, _ = runMaintenance { Index = false; Clean = true; Paths = [] } store
+        Assert.Equal(0, code)
+        Assert.Equal("", out)
+        Assert.True(store.Current.IsNone))
+
+[<Fact>]
+let ``index with a missing path reports it and exits 2`` () =
+    let store = Ferret.Index.MemoryIndexStore()
+    let code, _, err = runMaintenance { Index = true; Clean = false; Paths = [ "does-not-exist" ] } store
+    Assert.Equal(2, code)
+    Assert.Contains("does-not-exist: No such file or directory", err)

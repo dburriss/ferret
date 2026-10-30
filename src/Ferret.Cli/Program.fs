@@ -7,6 +7,7 @@ open Ferret.Domain
 open Ferret.Cli.Args
 open Ferret.Cli.Deps
 open Ferret.Cli.GrepCli
+open Ferret.Cli.MaintenanceCli
 open Ferret.Cli.RankedCli
 
 let private (|VersionCmd|_|) (r: ParseResults<FerretArgs>) =
@@ -55,6 +56,29 @@ let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string l
               NoIndex = r.Contains No_Index
               Timings = r.Contains Timings }
 
+/// Maintenance arguments, or a usage error. They take paths only: no pattern and no search flags.
+let private toMaintenanceArgs (r: ParseResults<FerretArgs>) (afterSeparator: string list) =
+    let conflicting =
+        [ r.Contains Lex, "--lex"
+          r.Contains No_Index, "--no-index"
+          r.Contains Limit, "--limit"
+          r.Contains Scores, "--scores"
+          r.Contains Jsonl, "--jsonl"
+          r.Contains Timings, "--timings"
+          r.Contains Ignore_Case, "-i"
+          r.Contains Fixed_Strings, "-F"
+          r.Contains Line_Number, "-n"
+          r.Contains Word_Regexp, "-w"
+          r.Contains Files_With_Matches, "-l"
+          r.Contains Count, "-c" ]
+        |> List.tryFind fst
+    let paths = r.GetResults Positional @ afterSeparator
+    match conflicting with
+    | Some(_, name) -> Error $"{name} cannot be used with --index or --clean"
+    | None when r.Contains Clean && not (r.Contains Index) && not paths.IsEmpty ->
+        Error "--clean takes no paths without --index"
+    | None -> Ok { Index = r.Contains Index; Clean = r.Contains Clean; Paths = paths }
+
 let private version () =
     let assembly = Assembly.GetExecutingAssembly()
     let info = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -77,6 +101,12 @@ let main argv =
         | None ->
             match parsed with
             | VersionCmd() -> version ()
+            | _ when parsed.Contains Index || parsed.Contains Clean ->
+                match toMaintenanceArgs parsed afterSeparator with
+                | Ok cmd -> MaintenanceCli.run (AdapterDeps.create isDebug) cmd
+                | Error message ->
+                    eprintfn "ferret: %s" message
+                    2
             | _ when parsed.Contains Lex ->
                 match toRankedArgs parsed afterSeparator with
                 | Ok cmd -> RankedCli.run (AdapterDeps.create isDebug) cmd

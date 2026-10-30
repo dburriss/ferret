@@ -18,10 +18,12 @@ type Snapshot =
       Entries: Dictionary<string, Entry> }
 
 /// Port: persist and load the cache. Implementations treat the cache as disposable: `Load`
-/// returns `None` for anything missing or unreadable, and `Save` may silently do nothing.
+/// returns `None` for anything missing or unreadable, and `Save` and `Clear` may silently do nothing.
 type IIndexStore =
     abstract Load: unit -> Snapshot option
     abstract Save: Snapshot -> unit
+    /// Removes the cache. Nothing to remove is not an error.
+    abstract Clear: unit -> unit
 
 /// A store that can load just what a query needs. `LoadFor` returns every entry with its stamp and
 /// length, but `TermFreq` and `FieldTerms` hold only the given terms. Such a snapshot answers that
@@ -45,3 +47,4 @@ type MemoryIndexStore() =
     interface IIndexStore with
         member _.Load() = snapshot
         member _.Save s = snapshot <- Some s
+        member _.Clear() = snapshot <- None

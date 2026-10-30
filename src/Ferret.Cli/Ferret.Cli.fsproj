@@ -15,6 +15,7 @@
     <Compile Include="Output.fs" />
     <Compile Include="GrepCli.fs" />
     <Compile Include="RankedCli.fs" />
+    <Compile Include="MaintenanceCli.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
