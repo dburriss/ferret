@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ferret.Cli/Ferret.Cli.fsproj" />
+    <Project Path="src/Ferret/Ferret.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ferret.Tests/Ferret.Tests.fsproj" />
+  </Folder>
+</Solution>

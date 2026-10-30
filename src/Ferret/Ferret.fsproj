@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>0.1.0</Version>
+    <PackageId>Ferret</PackageId>
+    <Description>Ripgrep-compatible search with ranked lexical and semantic search for text and markdown knowledge bases.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Domain.fs" />
+    <Compile Include="Ignore.fs" />
+    <Compile Include="Grep.fs" />
+    <Compile Include="FileSource.fs" />
+  </ItemGroup>
+
+</Project>
