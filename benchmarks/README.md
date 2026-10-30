@@ -1,0 +1,73 @@
+# Benchmarks
+
+Two kinds of measurement live here: speed against `rg`, and relevance (ranking quality). Neither runs in CI. The plan and rationale are in `docs/TEST-CORPUS.md`.
+
+```
+benchmarks/
+  fetch.fsx                  clones the perf corpora into data/
+  run.fsx                    times rg vs ferret with hyperfine
+  relevance-baseline.json    accepted relevance scores (committed)
+  data/                      perf corpora (gitignored, several GB)
+  results/                   perf results and relevance run logs
+```
+
+## Performance
+
+Times `rg` and `ferret` on the same patterns over large trees.
+
+```sh
+mise run fetch:perf        # shallow clones of Linux v6.12 and dotnet/runtime v9.0.0 (several GB)
+mise run bench [-- runs]   # builds Release, then runs hyperfine (default 10 runs after 1 warmup)
+```
+
+- Warm cache only. Cold-cache runs need a page-cache purge (`sudo purge` on macOS), so they are manual.
+- `hyperfine` comes from `mise.toml` (`mise install`).
+- The patterns cover a literal, a rare literal, a fixed string (`-F`), a regex, a case-insensitive match and a pattern with no match. They are listed at the top of `run.fsx`.
+- Output is `results/<date>-<machine>.json`: per tool and pattern, mean, median, min, stddev and peak RSS.
+- This is a search-speed check, so it uses code corpora. It says nothing about ranking quality.
+
+## Relevance
+
+Runs Ferret's BM25 over labelled datasets and reports nDCG@10, recall@100 and MRR@10. The runner is `scripts/eval-relevance.fsx`.
+
+| Dataset | What it is | Queries | Source |
+|---|---|---|---|
+| `scifact` | BEIR SciFact, scientific abstracts | 300 | `mise run fetch:corpus` |
+| `nfcorpus` | BEIR NFCorpus, nutrition and medical | 323 | `mise run fetch:corpus` |
+| `fsharp-docs` | `docs/fsharp` from dotnet/docs, real markdown | 42 | `mise run fetch:fsharp-docs` |
+
+The F# docs queries are hand-written with graded labels (2 = canonical page, 1 = also relevant). They are checked in at `tests/corpus/relevance/fsharp-docs/queries.json` and split into `keyword`, `question` and `exact` types. The eval prints a score per type, because the types behave very differently: BM25 is strong on keyword and exact-token queries and weak on natural-language questions.
+
+```sh
+mise run eval:relevance                    # all datasets, about 2.5 min (SciFact is most of it)
+mise run eval:relevance -- fsharp-docs     # one dataset, about 1s
+mise run eval:relevance -- --update        # record the measured scores as the new baseline
+```
+
+### Baseline and regression gate
+
+`relevance-baseline.json` holds the accepted nDCG@10, recall@100 and MRR@10 per dataset. Each run prints the delta from it and exits 1 with a `REGRESSION` line if any dataset's nDCG@10 is more than 0.01 below the baseline.
+
+After an intentional change to ranking or tokenizing, run with `--update` and commit the file. Its git history is the record of accepted scores.
+
+### Run logs
+
+A full run (no dataset argument) also writes `results/relevance-<hash>.json`, with timestamp, git commit, dirty flag, and per-dataset and per-type scores.
+
+`<hash>` is the first 8 hex characters of a SHA-256 over everything that can change a score:
+
+- `src/Ferret/**/*.fs` and `*.fsproj`
+- `scripts/eval-relevance.fsx`, `fetch-corpus.fsx` and `fetch-fsharp-docs.fsx` (metrics, loaders and dataset pins)
+- `tests/corpus/relevance/**` (queries and labels)
+
+The hash is our own rather than the git sha because a git sha is the wrong key: docs-only commits would each get a log with identical scores, and a dirty tree shares its sha with the clean tree but can score differently. The hash changes only when a score could.
+
+A log is written only if none exists for that hash, so docs-only commits and repeat runs add nothing, and each distinct code state is logged once, dirty or not. Partial runs (one dataset) are never logged, since they would block the full run for the same inputs. To force a new log, delete the file.
+
+The logs are untracked by default. Commit the ones worth keeping.
+
+### Caveats
+
+- The F# docs set is small and its labels are one person's judgement, written before ferret was run on it. Treat its score as a regression reference, not an absolute measure.
+- SciFact and NFCorpus have published BM25 figures (about 0.665 and 0.32 nDCG@10, quoted from memory and not re-verified). They are a sanity check that our BM25 behaves like a reference implementation.
+- Datasets live in `corpus/` (gitignored). Never commit dataset files. The BEIR sets are for research use.

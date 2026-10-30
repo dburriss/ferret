@@ -18,10 +18,9 @@ let baselinePath = Path.Combine(root, "benchmarks", "relevance-baseline.json")
 let args = fsi.CommandLineArgs |> Array.skip 1 |> List.ofArray
 let update = List.contains "--update" args
 
-let names =
-    match args |> List.filter (fun a -> a <> "--update") with
-    | [] -> [ "scifact"; "nfcorpus"; "fsharp-docs" ]
-    | ns -> ns
+let requested = args |> List.filter (fun a -> a <> "--update")
+let fullRun = requested.IsEmpty
+let names = if fullRun then [ "scifact"; "nfcorpus"; "fsharp-docs" ] else requested
 
 type Scores = { ndcg: float; recall: float; mrr: float }
 
@@ -134,7 +133,7 @@ let results =
         printfn "MRR@10     %.3f%s" s.mrr (delta s.mrr (b |> Option.map _.mrr))
         n, s, count, kinds)
 
-// Every run leaves a timestamped record, so scores can be compared over time.
+// A full run is logged once per distinct set of score-affecting inputs, so scores can be compared over time.
 let git (args: string) =
     let psi = Diagnostics.ProcessStartInfo("git", args, WorkingDirectory = root, RedirectStandardOutput = true)
     use p = Diagnostics.Process.Start psi
@@ -142,18 +141,35 @@ let git (args: string) =
     p.WaitForExit()
     out
 
-let logRun () =
+// Hash of everything that can change a score: the library source, this script, the labels and the dataset pins.
+let inputHash () =
+    let inBuildDir (f: string) =
+        let rel = Path.GetRelativePath(root, f).Replace('\\', '/')
+        rel.Contains "/bin/" || rel.Contains "/obj/"
+    let under (dir: string) (pattern: string) =
+        Directory.GetFiles(Path.Combine(root, dir), pattern, SearchOption.AllDirectories)
+    let inputs =
+        [ yield! under "src/Ferret" "*.fs"
+          yield! under "src/Ferret" "*.fsproj"
+          yield! under "tests/corpus/relevance" "*"
+          for f in [ "eval-relevance.fsx"; "fetch-corpus.fsx"; "fetch-fsharp-docs.fsx" ] ->
+              Path.Combine(root, "scripts", f) ]
+        |> List.filter (inBuildDir >> not)
+        |> List.map (fun f -> Path.GetRelativePath(root, f).Replace('\\', '/'), f)
+        |> List.sortBy fst
+    let content (rel: string, f: string) = rel + "\n" + File.ReadAllText(f).Replace("\r\n", "\n") + "\n"
+    let bytes = inputs |> List.map content |> String.concat "" |> Text.Encoding.UTF8.GetBytes
+    (Convert.ToHexString(Security.Cryptography.SHA256.HashData bytes)).Substring(0, 8).ToLowerInvariant()
+
+let writeLog (path: string) (hash: string) =
     let sha = git "rev-parse --short HEAD"
-    let dirty = git "status --porcelain -- src scripts" <> ""
+    let dirty = git "status --porcelain -- src scripts tests" <> ""
     let now = DateTimeOffset.UtcNow
-    let dir = Path.Combine(root, "benchmarks", "results")
-    Directory.CreateDirectory dir |> ignore
-    let stamp = now.ToString "yyyy-MM-dd-HHmmss"
-    let path = Path.Combine(dir, $"relevance-{stamp}-{sha}.json")
     use stream = File.Create path
     use w = new Utf8JsonWriter(stream, JsonWriterOptions(Indented = true))
     w.WriteStartObject()
     w.WriteString("timestamp", now.ToString("o"))
+    w.WriteString("inputHash", hash)
     w.WriteString("commit", sha)
     w.WriteBoolean("dirty", dirty)
     w.WriteStartObject "datasets"
@@ -176,9 +192,21 @@ let logRun () =
     w.WriteEndObject()
     w.WriteEndObject()
     w.Flush()
-    printfn "run logged to %s" (Path.GetRelativePath(root, path))
 
-logRun ()
+let logRun () =
+    let hash = inputHash ()
+    let dir = Path.Combine(root, "benchmarks", "results")
+    Directory.CreateDirectory dir |> ignore
+    let path = Path.Combine(dir, $"relevance-{hash}.json")
+    let rel = Path.GetRelativePath(root, path)
+    if File.Exists path then
+        printfn "run not logged: inputs %s already have %s" hash rel
+    else
+        writeLog path hash
+        printfn "run logged to %s" rel
+
+// Partial runs are not logged: they would block the full run for the same inputs.
+if fullRun then logRun ()
 
 if update then
     let merged = results |> List.fold (fun m (n, s, _, _) -> Map.add n s m) baseline
