@@ -1,8 +1,8 @@
 {
   "fsharp-docs": {
-    "ndcg10": 0.834,
+    "ndcg10": 0.863,
     "recall100": 0.992,
-    "mrr10": 0.841
+    "mrr10": 0.884
   },
   "nfcorpus": {
     "ndcg10": 0.322,
