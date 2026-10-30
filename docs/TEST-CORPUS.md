@@ -1,0 +1,103 @@
+# Test corpus
+
+Ferret needs test data for three different jobs. One corpus can't do all three, so there are three tiers.
+
+| Tier | Purpose | Size | In git? |
+|---|---|---|---|
+| Compat fixtures | ripgrep-compatible behaviour | tiny | yes |
+| Smoke | fast ranking sanity check, runs in CI | ~30 files | yes |
+| Relevance | ranking quality vs published baselines | thousands of docs | no, fetched by script |
+| Perf | speed and scale vs `rg` | GBs | no, fetched by script |
+
+## The POC corpus
+
+The POC lives outside this repo at `ws/temp/ffind/eval/`.
+
+- `fixtures/ddd/`: 10 DDD notes (~6 KB).
+- `fixtures/noise/`: 20 *Moby Dick* extracts (~28 KB), used as distractors.
+- `queries.json`: 4 queries with `{query, relevant[]}` labels.
+- `fixtures-knowledge-synthetic/` + `queries-knowledge.json`: 24 synthetic docs, 6 queries.
+- `compare.sh`: R@10 and P@R against `ck`.
+
+### Limits
+
+- Ten queries in total. One file moving one rank changes the result.
+- With 30 files, a lazy ranking still scores well on R@10.
+- Moby Dick shares almost no vocabulary with DDD, so it tests topic separation, not BM25 term weighting.
+- Labels were written for semantic retrieval. There are no exact-term, rare-token or identifier queries, which is where BM25 should beat embeddings.
+- No ripgrep-compat cases.
+
+### Reuse
+
+- Port `ddd/`, `noise/` and `queries.json` as the smoke tier.
+- Keep the label format. Add graded relevance later if nDCG is wanted.
+- Keep the metrics (R@10, P@R) and the comparison-against-a-reference approach.
+- The synthetic knowledge corpus belongs with the chunks-vs-files experiment (`research/chunks-vs-files-findings.md`), not here.
+
+## Tier: compat fixtures
+
+Hand-built, checked in, one directory per behaviour. Nothing public covers these.
+
+- Binary files (NUL bytes), and files that turn binary after the first buffer.
+- Very long lines, empty files.
+- Non-UTF-8 encodings (UTF-16 with BOM, Latin-1).
+- CRLF and mixed line endings.
+- `.gitignore`, `.ignore`, nested ignore files, negation rules, hidden files.
+- Symlinks (file, directory, loop).
+- Stdin vs file-argument detection.
+
+Tests assert Ferret's output against `rg`'s on the same inputs. Where `rg` isn't available, assert against checked-in expected output.
+
+## Tier: smoke
+
+The ported POC corpus, plus the following additions:
+
+- About 20 exact-term and identifier queries (for example a rare word, a type name, a flag name) with labels. This lets BM25 and semantic search be compared per query type.
+- More noise: more *Moby Dick* chapters, so the corpus has more than 30 files.
+- Queries where the right answer needs term weighting, for example a common word plus a rare word.
+
+Target is under a second to index and query. Runs in CI.
+
+## Tier: relevance
+
+Fetched by a script into a gitignored `corpus/` directory. Data is JSONL, so the script writes one file per doc.
+
+| Dataset | Docs | Why |
+|---|---|---|
+| BEIR SciFact | ~5k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.67. |
+| BEIR NFCorpus | ~3.6k | Small, with qrels. Published BM25 nDCG@10 ≈ 0.32. |
+| CodeSearchNet | large | Code plus natural-language queries. Closer to Ferret's real use. |
+| Cranfield, CACM | ~1.4k, ~3.2k | Tiny classics for fast iteration. |
+
+Tooling: `ir_datasets` for download, `ir-measures` for nDCG and recall. Both are Python and only needed by the fetch and eval scripts, not by Ferret.
+
+The published BM25 numbers give a check that our BM25 matches a reference implementation. Large gaps point to tokenisation or parameter differences (`k1`, `b`). Treat the figures above as approximate and confirm them against Anserini or BEIR before relying on them.
+
+## Tier: perf
+
+Fetched by script, never checked in.
+
+- Linux kernel source: realistic code, large.
+- `dotnet/runtime`: realistic code, .NET-heavy.
+- ripgrep's benchsuite corpora (Linux source, OpenSubtitles en): allows direct `rg` vs `ferret` timing.
+
+Report cold and warm runs, index size, and index build time.
+
+## Layout
+
+```
+tests/
+  corpus/
+    compat/        checked in
+    smoke/         checked in (ddd/, noise/, queries.json)
+corpus/            gitignored, populated by scripts
+scripts/
+  fetch-corpus.sh
+  eval-relevance.*
+```
+
+## Open questions
+
+- Which scripting language for fetch and eval: shell, `.fsx`, or Python?
+- Is CodeSearchNet worth it at v1, or do SciFact and NFCorpus suffice?
+- Where should perf results be recorded: `research/`, or CI artefacts?
