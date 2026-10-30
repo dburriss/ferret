@@ -255,3 +255,15 @@ let ``count on stdin alone is bare`` () =
 let ``stdin is read once when given twice`` () =
     let _, out, _ = runWith (Some piped) (grep "hello" [ "-"; "-" ])
     Assert.Equal("<stdin>:hello stdin\n", out)
+
+[<Fact>]
+let ``regular files, pipes and sockets are searchable stdin`` () =
+    Assert.True(Deps.stdinModeIsSearchable 0o100644u) // regular file
+    Assert.True(Deps.stdinModeIsSearchable 0o010600u) // fifo
+    Assert.True(Deps.stdinModeIsSearchable 0o140755u) // socket
+
+[<Fact>]
+let ``character devices, block devices and directories are not`` () =
+    Assert.False(Deps.stdinModeIsSearchable 0o020666u) // /dev/null, a tty
+    Assert.False(Deps.stdinModeIsSearchable 0o060660u) // block device
+    Assert.False(Deps.stdinModeIsSearchable 0o040755u) // directory
