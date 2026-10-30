@@ -81,23 +81,33 @@ Fetched by script, never checked in.
 - `dotnet/runtime`: realistic code, .NET-heavy.
 - ripgrep's benchsuite corpora (Linux source, OpenSubtitles en): allows direct `rg` vs `ferret` timing.
 
-Report cold and warm runs, index size, and index build time.
+Report warm-cache timings and peak memory via `hyperfine`. Cold-cache runs need a page-cache purge (`sudo purge` on macOS), so they are manual. Library-level micro-benchmarks, if added, would use BenchmarkDotNet.
 
 Harness scripts and raw results live in `benchmarks/`. Write-ups that interpret them go in `research/`.
 
 ## Layout
 
 ```
-tests/
-  corpus/
-    compat/        checked in
-    smoke/         checked in (ddd/, noise/, queries.json)
-corpus/            gitignored, populated by scripts
+tests/corpus/
+  smoke/           ddd/, noise/, queries.json
+  compat/<case>/   args, tree/, expected.txt, exit, [git], [gap]
+corpus/            gitignored, fetched BEIR datasets
 scripts/
   fetch-corpus.fsx
   eval-relevance.fsx
-benchmarks/        perf harness and raw results
+  gen-compat-expected.fsx
+benchmarks/
+  fetch.fsx, run.fsx
+  results/         raw results, checked in
+  data/            gitignored clones
 ```
+
+## Status
+
+- Smoke: built. 18 exact and 4 weighted queries asserted, 4 semantic recorded.
+- Compat: built, 16 cases. Two known gaps vs rg: CRLF lines lose the `\r` (`crlf/gap`), and UTF-16 files with a BOM are skipped as binary (`utf16-bom/gap`).
+- Relevance: built. SciFact nDCG@10 is 0.662 (published BM25 ≈ 0.665, from memory, not re-verified), recall@100 0.886, MRR@10 0.628, in about 80s. NFCorpus not yet run.
+- Perf: scripts built and smoke-tested on a tiny directory. `run.fsx` drives `hyperfine` (pinned in `mise.toml`) and records mean, median, min, stddev and peak RSS. Warm cache only, since a cold run needs `sudo purge`. The Linux and dotnet/runtime clones have not been run yet.
 
 ## Decisions
 
