@@ -28,7 +28,10 @@ if not (File.Exists ferretDll) then failwith $"{ferretDll} not found, build src/
 let quote (s: string) = "'" + s.Replace("'", "'\\''") + "'"
 
 /// hyperfine runs each command with stdin on /dev/null, so neither tool searches stdin.
-let hyperfine (cwd: string) (env: (string * string) list) (commands: (string * string * string option) list) =
+/// `label` (corpus and pattern) prefixes every command name so hyperfine's output says what it ran; the
+/// results keep the short name.
+let hyperfine (label: string) (cwd: string) (env: (string * string) list) (commands: (string * string * string option) list) =
+    printfn "\n=== %s ===" label
     let json = Path.GetTempFileName()
     let psi = ProcessStartInfo("hyperfine", WorkingDirectory = cwd)
     for k, v in env do
@@ -40,7 +43,7 @@ let hyperfine (cwd: string) (env: (string * string) list) (commands: (string * s
         psi.ArgumentList.Add "--prepare"
         psi.ArgumentList.Add(defaultArg prepare "true")
         psi.ArgumentList.Add "--command-name"
-        psi.ArgumentList.Add name
+        psi.ArgumentList.Add $"{label} | {name}"
         psi.ArgumentList.Add command
     use p = Process.Start psi
     p.WaitForExit()
@@ -51,7 +54,7 @@ let hyperfine (cwd: string) (env: (string * string) list) (commands: (string * s
         let wall = r.GetProperty("summary").GetProperty("time_wall_clock")
         let ms (name: string) = wall.GetProperty(name).GetDouble() * 1000.0
         let memory = r.GetProperty("summary").GetProperty("memory_peak_resident").GetProperty("median").GetDouble()
-        {| tool = r.GetProperty("name").GetString()
+        {| tool = r.GetProperty("name").GetString().Substring(label.Length + 3)
            mean_ms = ms "mean"
            median_ms = ms "median"
            min_ms = ms "min"
@@ -73,8 +76,12 @@ let results =
                    pattern = pattern
                    flags = flags
                    timings =
-                    hyperfine cwd [] [ "rg", "rg --no-config " + args, None
-                                       "ferret", $"dotnet {quote ferretDll} {args}", None ] |} ]
+                    hyperfine
+                        $"{corpus} | {pattern} {String.Join(' ', flags)}"
+                        cwd
+                        []
+                        [ "rg", "rg --no-config " + args, None
+                          "ferret", $"dotnet {quote ferretDll} {args}", None ] |} ]
 
 // Ranked search. The index lives in a throwaway cache dir, so the user's own cache is untouched.
 let repo = Path.Combine(here, "..") |> Path.GetFullPath
@@ -97,7 +104,7 @@ let lexResults =
             for query in queries do
                 let ferret extra = $"dotnet {quote ferretDll} --lex {extra}{quote query}"
                 let timings =
-                    hyperfine dir [ "FERRET_CACHE_DIR", cache ]
+                    hyperfine $"{corpus} | --lex {query}" dir [ "FERRET_CACHE_DIR", cache ]
                         [ "per-run", ferret "--no-index ", None
                           "index-build", ferret "", Some("rm -f " + quote indexFile)
                           "index-warm", ferret "", None ]
