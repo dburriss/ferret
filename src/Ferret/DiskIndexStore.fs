@@ -74,6 +74,92 @@ let private read (r: BinaryReader) : Snapshot option =
             else
                 Some { Version = version; Entries = entries }
 
+/// Reads the file format straight from a buffer. Terms are compared as UTF-8 bytes, so skipping a
+/// term that no query wants allocates nothing.
+type private Cursor(buf: byte[]) =
+    let mutable pos = 0
+    member _.Int32() =
+        let v = BitConverter.ToInt32(buf, pos)
+        pos <- pos + 4
+        v
+    member _.Byte() =
+        let v = buf[pos]
+        pos <- pos + 1
+        v
+    /// BinaryWriter prefixes a string with its byte length as a 7-bit encoded int.
+    member private _.Length() =
+        let mutable n = 0
+        let mutable shift = 0
+        let mutable more = true
+        while more do
+            let b = buf[pos]
+            pos <- pos + 1
+            n <- n ||| (int (b &&& 0x7Fuy) <<< shift)
+            shift <- shift + 7
+            more <- b &&& 0x80uy <> 0uy
+        n
+    member this.String() =
+        let n = this.Length()
+        let s = Encoding.UTF8.GetString(buf, pos, n)
+        pos <- pos + n
+        s
+    member this.SkipString() =
+        let n = this.Length()
+        pos <- pos + n
+    member _.Skip n = pos <- pos + n
+    /// Reads a string and returns the index of the wanted term it equals, or -1.
+    member this.Match(wanted: byte[][]) =
+        let n = this.Length()
+        let span = ReadOnlySpan<byte>(buf, pos, n)
+        pos <- pos + n
+        let mutable found = -1
+        let mutable i = 0
+        while found < 0 && i < wanted.Length do
+            if span.SequenceEqual(ReadOnlySpan<byte> wanted[i]) then found <- i
+            i <- i + 1
+        found
+
+/// Decodes like `read`, but keeps only the given terms in each entry's `TermFreq` and `FieldTerms`.
+/// This is what a query sees of the entry (fields with no wanted term are left out), without
+/// building a map or set for every term in the file.
+let private readFor (buf: byte[]) (terms: string list) : Snapshot option =
+    let c = Cursor buf
+    let wanted = terms |> List.map Encoding.UTF8.GetBytes |> Array.ofList
+    let names = Array.ofList terms
+    if c.Int32() <> Magic then
+        None
+    else
+        let version = c.Int32()
+        if version <> Ferret.Index.version then
+            None
+        else
+            let count = c.Int32()
+            let entries = Collections.Generic.Dictionary<string, Entry>(count)
+            for _ in 1 .. count do
+                let path = c.String()
+                let stamp = c.String()
+                let length = c.Int32()
+                let mutable freqs = []
+                for _ in 1 .. c.Int32() do
+                    let hit = c.Match wanted
+                    let n = c.Int32()
+                    if hit >= 0 then freqs <- (names[hit], n) :: freqs
+                let mutable fields = []
+                for _ in 1 .. c.Int32() do
+                    let code = c.Byte()
+                    let mutable hits = []
+                    for _ in 1 .. c.Int32() do
+                        let hit = c.Match wanted
+                        if hit >= 0 then hits <- names[hit] :: hits
+                    if not hits.IsEmpty then
+                        fields <- (fieldCodes |> List.find (snd >> (=) code) |> fst, Set.ofList hits) :: fields
+                entries[path] <-
+                    { Stamp = stamp
+                      Length = length
+                      TermFreq = Map.ofList freqs
+                      FieldTerms = Map.ofList fields }
+            if c.Int32() <> Trailer then None else Some { Version = version; Entries = entries }
+
 /// Where the cache lives by default: `$FERRET_CACHE_DIR`, else `$XDG_CACHE_HOME/ferret`, else
 /// the platform's per-user cache directory.
 let defaultPath () : string =
@@ -115,3 +201,10 @@ type DiskIndexStore(path: string) =
                 File.Move(temp, path, true)
             with :? IOException | :? UnauthorizedAccessException ->
                 try File.Delete temp with _ -> ()
+
+    interface IQueryIndexStore with
+        member _.LoadFor terms =
+            try
+                if File.Exists path then readFor (File.ReadAllBytes path) terms else None
+            with _ ->
+                None

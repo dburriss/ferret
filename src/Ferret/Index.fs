@@ -23,6 +23,13 @@ type IIndexStore =
     abstract Load: unit -> Snapshot option
     abstract Save: Snapshot -> unit
 
+/// A store that can load just what a query needs. `LoadFor` returns every entry with its stamp and
+/// length, but `TermFreq` and `FieldTerms` hold only the given terms. Such a snapshot answers that
+/// query exactly but must never be saved: use `Load` for the full one.
+type IQueryIndexStore =
+    inherit IIndexStore
+    abstract LoadFor: terms: string list -> Snapshot option
+
 /// Bump when the entry layout changes.
 [<Literal>]
 let FormatVersion = 1

@@ -161,9 +161,19 @@ let searchIndexed
         []
     else
         let termSet = Set.ofList terms
+        // A store that can load per query gives entries trimmed to the query terms: enough to rank,
+        // not to save. Changes are tracked so a save can apply them to the full snapshot.
+        let trimmed = ref false
         let entries =
             phase "ferret.index.load" (fun a ->
-                let loaded = store.Load() |> Option.filter (fun s -> s.Version = Index.version)
+                let loaded =
+                    match store with
+                    | :? Index.IQueryIndexStore as q ->
+                        let loaded = q.LoadFor terms
+                        trimmed.Value <- loaded.IsSome
+                        loaded
+                    | _ -> store.Load()
+                let loaded = loaded |> Option.filter (fun s -> s.Version = Index.version)
                 tag a "loaded" loaded.IsSome
                 match loaded with
                 | Some s ->
@@ -182,6 +192,8 @@ let searchIndexed
                 tag a "files" walked.Length
                 walked)
         let seen = Collections.Generic.HashSet<string>()
+        let fresh = Collections.Generic.Dictionary<string, Index.Entry>()
+        let dropped = Collections.Generic.HashSet<string>()
         let mutable changed = false
         let mutable reused = 0
         let mutable built = 0
@@ -200,6 +212,7 @@ let searchIndexed
                             | Some entry ->
                                 seen.Add key |> ignore
                                 entries[key] <- entry
+                                fresh[key] <- entry
                                 changed <- true
                                 built <- built + 1
                                 Some(candidateOf terms termSet path entry)
@@ -207,6 +220,8 @@ let searchIndexed
                                 // A file that cannot be read and has no entry changes nothing.
                                 if cached then
                                     entries.Remove key |> ignore
+                                    fresh.Remove key |> ignore
+                                    dropped.Add key |> ignore
                                     changed <- true
                                 None)
                 tag a "files.total" walked.Length
@@ -218,11 +233,23 @@ let searchIndexed
         let gone = entries.Keys |> Seq.filter (fun k -> not (seen.Contains k) && isUnder searched k) |> List.ofSeq
         for key in gone do
             entries.Remove key |> ignore
+            dropped.Add key |> ignore
         phase "ferret.index.save" (fun a ->
             let save = changed || not gone.IsEmpty
             tag a "saved" save
             tag a "entries" entries.Count
             tag a "files.removed" gone.Length
             if save then
-                store.Save { Version = Index.version; Entries = entries })
+                if not trimmed.Value then
+                    store.Save { Version = Index.version; Entries = entries }
+                else
+                    // Only a full snapshot can be saved: load it and apply what this run changed.
+                    match store.Load() |> Option.filter (fun s -> s.Version = Index.version) with
+                    | Some full ->
+                        for key in dropped do
+                            full.Entries.Remove key |> ignore
+                        for KeyValue(key, entry) in fresh do
+                            full.Entries[key] <- entry
+                        store.Save full
+                    | None -> ())
         rank ranker files query terms limit candidates

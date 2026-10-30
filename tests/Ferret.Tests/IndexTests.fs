@@ -250,3 +250,65 @@ let ``a warm run saves nothing when a file cannot be read`` () =
         Assert.Equal(1, saves.Value)
         run ()
         Assert.Equal(1, saves.Value))
+
+[<Fact>]
+let ``a query-scoped load keeps only the query terms, and the disk store ranks the same through it`` () =
+    withTree [ "a.md", "---\ntitle: Mock\n---\n# Heading\nmock text other\n"; "b.txt", "other mock mock\n"; "c.txt", "unrelated\n" ] (fun d ->
+        let cache = Path.Combine(d, "cache", "lexical.idx")
+        let store = DiskIndexStore.DiskIndexStore cache
+        let root = Path.Combine(d, "src")
+        Directory.CreateDirectory root |> ignore
+        for f in [ "a.md"; "b.txt"; "c.txt" ] do
+            File.Move(Path.Combine(d, f), Path.Combine(root, f))
+        for q in [ "mock"; "other"; "mock heading"; "absent" ] do // cold first, then warm
+            assertSame (perRun root q) (indexed store root q)
+            assertSame (perRun root q) (indexed store root q)
+        let full = (store :> IIndexStore).Load().Value
+        let scoped = (store :> IQueryIndexStore).LoadFor [ "mock" ]
+        Assert.True(scoped.IsSome)
+        Assert.Equal(full.Entries.Count, scoped.Value.Entries.Count)
+        for KeyValue(key, entry) in full.Entries do
+            let s = scoped.Value.Entries[key]
+            Assert.Equal(entry.Stamp, s.Stamp)
+            Assert.Equal(entry.Length, s.Length)
+            Assert.Equal<Map<string, int>>(entry.TermFreq |> Map.filter (fun t _ -> t = "mock"), s.TermFreq)
+            let fields =
+                entry.FieldTerms
+                |> Map.map (fun _ ts -> ts |> Set.filter ((=) "mock"))
+                |> Map.filter (fun _ ts -> not ts.IsEmpty)
+            Assert.Equal<Map<Field, Set<string>>>(fields, s.FieldTerms))
+
+[<Fact>]
+let ``a run that changes files saves the full index, not the query-scoped one`` () =
+    withTree [ "src/a.txt", "apple banana\n"; "src/b.txt", "banana cherry\n"; "src/c.txt", "cherry date\n" ] (fun d ->
+        let cache = Path.Combine(d, "cache", "lexical.idx")
+        let store = DiskIndexStore.DiskIndexStore cache
+        let root = Path.Combine(d, "src")
+        indexed store root "apple" |> ignore
+        let a = Path.Combine(root, "a.txt")
+        File.WriteAllText(a, "apple grape\n")
+        File.SetLastWriteTimeUtc(a, File.GetLastWriteTimeUtc a + TimeSpan.FromSeconds 5.0)
+        File.Delete(Path.Combine(root, "c.txt"))
+        File.WriteAllText(Path.Combine(root, "d.txt"), "apple date\n")
+        // Warm, with changes: loads query-scoped, then must save the full snapshot.
+        assertSame (perRun root "apple") (indexed store root "apple")
+        let saved = (store :> IIndexStore).Load().Value
+        let expected = MemoryIndexStore()
+        indexed expected root "apple" |> ignore
+        Assert.True(sameEntries expected.Current.Value saved)
+        for q in [ "banana"; "cherry"; "grape"; "date" ] do
+            assertSame (perRun root q) (indexed store root q))
+
+[<Fact>]
+let ``a query-scoped load of a missing, garbage or other-version file is None`` () =
+    withTree [ "a.txt", "apple\n" ] (fun d ->
+        let cache = Path.Combine(d, "cache.idx")
+        let store = DiskIndexStore.DiskIndexStore cache :> IQueryIndexStore
+        Assert.True((store.LoadFor [ "apple" ]).IsNone)
+        for bad in [ [| 1uy; 2uy; 3uy |]; Array.zeroCreate<byte> 64 ] do
+            File.WriteAllBytes(cache, bad)
+            Assert.True((store.LoadFor [ "apple" ]).IsNone)
+        let memory = MemoryIndexStore()
+        indexed memory d "apple" |> ignore
+        (store :> IIndexStore).Save { memory.Current.Value with Version = version + 1 }
+        Assert.True((store.LoadFor [ "apple" ]).IsNone))
