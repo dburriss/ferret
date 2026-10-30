@@ -58,8 +58,8 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 
 Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
 
-- **Built:** `ferret --lex <terms> [path...] [--limit N] [--scores] [--jsonl]`. Computed per run with no persisted index, over the same file walk and ignore rules as plain search. The tokenizer lowercases, splits on non-alphanumerics, drops stop words and applies light suffix stemming (`mock` matches `mocked`). Because stop words are dropped, a query that is only a stop word (`in`, `is`, `to`) returns nothing. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. `--scores` prefixes each line with `[score]` (4 decimals, e.g. `[2.4131] path:line:text`). `--jsonl` prints one JSON object per excerpt line (`file`, `line`, `score`, `text`) for agents. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit`, `--scores` or `--jsonl` without `--lex` is a usage error.
-- **Planned:** everything below that is not in the Built line: README and concept-file boosts, tag filtering, a persisted index, the table and json output.
+- **Built:** `ferret --lex <terms> [path...] [--limit N] [--scores] [--jsonl]`. Reads files through a persisted index (see below; `--no-index` reads every file instead), over the same file walk and ignore rules as plain search. The tokenizer lowercases, splits on non-alphanumerics, drops stop words and applies light suffix stemming (`mock` matches `mocked`). Because stop words are dropped, a query that is only a stop word (`in`, `is`, `to`) returns nothing. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. `--scores` prefixes each line with `[score]` (4 decimals, e.g. `[2.4131] path:line:text`). `--jsonl` prints one JSON object per excerpt line (`file`, `line`, `score`, `text`) for agents. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit`, `--scores`, `--jsonl` or `--no-index` without `--lex` is a usage error.
+- **Planned:** everything below that is not in the Built line: README and concept-file boosts, tag filtering, the `--index`/`--clean`/`--status` commands, an inverted index for large corpora, the table and json output.
 
 - BM25 over a token index (`K1 = 1.2`, `B = 0.75`, non-negative IDF), deterministic ordering with path tie-break.
 - OR semantics, made safe by ranking: more and rarer matched terms rise to the top.
@@ -85,7 +85,9 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 
 ### Index and cache
 
-- Stats and index are a disposable cache, built on first use and rebuilt when the index version changes.
+- **Built (lexical):** one binary file, `lexical.idx`, under `$FERRET_CACHE_DIR`, else `$XDG_CACHE_HOME/ferret`, else `~/.cache/ferret` (`%LOCALAPPDATA%\ferret` on Windows). It holds, per file, the token count, every term frequency and the terms in each boostable field, keyed by full path and stamped with size and modified time. A `--lex` run walks the files as before, reuses entries whose stamp is unchanged, re-reads new or changed files, drops entries for files gone from the searched roots, and saves only when something changed. Excerpts still read the top files. Results are identical to `--no-index` (tested exactly, including scores).
+- Stats and index are a disposable cache, built on first use and rebuilt when the index version changes. A missing, corrupt or other-version file is rebuilt silently; an unwritable cache dir is ignored.
+- Known limits: an edit that keeps both size and modified time is not noticed; a warm query still loads the whole index, so on very large corpora it may not beat `--no-index` (see `benchmarks/README.md`).
 - Cache key includes ignore patterns and the normaliser version.
 - Incremental by file hash where feasible.
 

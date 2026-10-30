@@ -16,6 +16,8 @@
     <Compile Include="FileSource.fs" />
     <Compile Include="Text.fs" />
     <Compile Include="Markdown.fs" />
+    <Compile Include="Index.fs" />
+    <Compile Include="DiskIndexStore.fs" />
     <Compile Include="Bm25.fs" />
     <Compile Include="Ranking.fs" />
     <Compile Include="Search.fs" />

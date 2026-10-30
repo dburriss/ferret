@@ -98,6 +98,7 @@ let ``search boosts a heading match above a body match`` () =
             member _.Kind _ = IsDirectory
             member _.Enumerate _ = docs |> Map.toSeq |> Seq.map fst
             member _.ReadLines p = docs |> Map.tryFind p |> Option.map Seq.ofList
+            member _.Stamp p = docs |> Map.tryFind p |> Option.map (fun _ -> "")
             member _.ReadStdin() = Seq.empty }
     let result = Search.search Ranking.bm25 files [ "" ] "mock" 10
     Assert.Equal<string list>([ "b.md"; "a.md"; "c.txt" ], result |> List.map _.File)

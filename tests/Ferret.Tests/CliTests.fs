@@ -34,6 +34,7 @@ let private withStdin (stdin: string list) =
         member _.Kind p = disk.Kind p
         member _.Enumerate r = disk.Enumerate r
         member _.ReadLines p = disk.ReadLines p
+        member _.Stamp p = disk.Stamp p
         member _.ReadStdin() = Seq.ofList stdin }
 
 /// Exit code, stdout, stderr. `stdin` is `Some lines` when stdin is piped.
@@ -44,6 +45,7 @@ let private runWith (stdin: string list option) (args: GrepArgs) =
         { Files = withStdin (Option.defaultValue [] stdin)
           Out = out
           Err = err
+          Index = Ferret.Index.MemoryIndexStore()
           StdinIsReadable = Option.isSome stdin
           IsDebug = false }
     let code = GrepCli.run deps args
@@ -223,7 +225,7 @@ let ``a dash path reads stdin`` () =
 let ``a dash path reads stdin even when stdin is not detected as piped`` () =
     let disk = withStdin piped
     let out = new StringWriter()
-    let deps = { Files = disk; Out = out; Err = new StringWriter(); StdinIsReadable = false; IsDebug = false }
+    let deps = { Files = disk; Index = Ferret.Index.MemoryIndexStore(); Out = out; Err = new StringWriter(); StdinIsReadable = false; IsDebug = false }
     Assert.Equal(0, GrepCli.run deps (grep "hello" [ "-" ]))
     Assert.Equal("hello stdin\n", out.ToString().Replace("\r\n", "\n"))
 
@@ -273,13 +275,15 @@ let private ranked query paths limit : RankedCli.RankedArgs =
       Paths = paths
       Limit = limit
       Scores = false
-      Jsonl = false }
+      Jsonl = false
+      NoIndex = false }
 
 let private runRanked (args: RankedCli.RankedArgs) =
     let out = new StringWriter()
     let err = new StringWriter()
     let deps =
         { Files = withStdin []
+          Index = Ferret.Index.MemoryIndexStore()
           Out = out
           Err = err
           StdinIsReadable = false
@@ -405,3 +409,11 @@ let ``lex jsonl with no match exits 1 and prints nothing`` () =
         let code, out, _ = runRanked { ranked "zebra" [ d ] 100 with Jsonl = true }
         Assert.Equal(1, code)
         Assert.Equal("", out))
+
+[<Fact>]
+let ``lex gives the same output with and without the index`` () =
+    withTree rankedTree (fun d ->
+        let args = { ranked "apple banana" [ d ] 100 with Scores = true }
+        let _, indexed, _ = runRanked args
+        let _, direct, _ = runRanked { args with NoIndex = true }
+        Assert.Equal(direct, indexed))

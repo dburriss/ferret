@@ -17,6 +17,9 @@ type IFileSource =
     abstract Enumerate: root: string -> seq<string>
     /// Lines of a file, or `None` when it is binary or unreadable.
     abstract ReadLines: path: string -> seq<string> option
+    /// A cheap fingerprint that changes when the file does (size and modified time on disk), or
+    /// `None` when the file cannot be read. Index entries are reused while it stays the same.
+    abstract Stamp: path: string -> string option
     /// Lines of standard input. Single use: the sequence consumes the stream.
     abstract ReadStdin: unit -> seq<string>
 
@@ -93,6 +96,13 @@ type DiskFileSource() =
                 let read = stream.Read(buffer, 0, buffer.Length)
                 if Array.IndexOf(buffer, 0uy, 0, read) >= 0 then None
                 else Some(File.ReadLines path)
+            with :? IOException | :? UnauthorizedAccessException ->
+                None
+
+        member _.Stamp path =
+            try
+                let info = FileInfo path
+                if info.Exists then Some $"{info.Length}:{info.LastWriteTimeUtc.Ticks}" else None
             with :? IOException | :? UnauthorizedAccessException ->
                 None
 

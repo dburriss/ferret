@@ -9,6 +9,8 @@ open Ferret.FileSource
 /// Adapters built once in `main` and passed to every command.
 type AdapterDeps =
     { Files: IFileSource
+      /// Persisted lexical index, used by `--lex`.
+      Index: Ferret.Index.IIndexStore
       Out: TextWriter
       Err: TextWriter
       /// True when stdin is a pipe, socket or file to search, not a terminal or `/dev/null`.
@@ -88,6 +90,7 @@ let private stdinIsReadable () =
 module AdapterDeps =
     let create (isDebug: bool) : AdapterDeps =
         { Files = DiskFileSource()
+          Index = Ferret.DiskIndexStore.DiskIndexStore(Ferret.DiskIndexStore.defaultPath ())
           Out = new StreamWriter(Console.OpenStandardOutput(), Text.UTF8Encoding(false), AutoFlush = false)
           Err = Console.Error
           StdinIsReadable = stdinIsReadable ()

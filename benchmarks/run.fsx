@@ -1,6 +1,9 @@
 // Times `rg` against `ferret` with hyperfine and writes benchmarks/results/<date>-<machine>.json.
 // Needs hyperfine on PATH (mise.toml) and a Release build: dotnet build -c Release src/Ferret.Cli
 // Usage: dotnet fsi benchmarks/run.fsx [runs]   (default 10, after one warmup run; warm cache only)
+// FERRET_BENCH_CORPORA=scifact,fsharp-docs limits both sections to the named corpora (default: all present).
+// Also times ranked search (--lex) three ways per query: per-run (--no-index), index build (cache deleted before
+// each run) and warm index. It uses the perf corpora plus any fetched BEIR / F# docs sets, and records the index size.
 open System
 open System.Diagnostics
 open System.IO
@@ -11,22 +14,31 @@ let data = Path.Combine(here, "data")
 let runs = match fsi.CommandLineArgs |> Array.skip 1 with [| n |] -> int n | _ -> 10
 let ferretDll = Path.Combine(here, "..", "src", "Ferret.Cli", "bin", "Release", "net10.0", "Ferret.Cli.dll") |> Path.GetFullPath
 
-let corpora = [ "linux"; "dotnet-runtime" ] |> List.filter (fun c -> Directory.Exists(Path.Combine(data, c)))
+let wanted =
+    match Environment.GetEnvironmentVariable "FERRET_BENCH_CORPORA" with
+    | null | "" -> fun (_: string) -> true
+    | names -> let set = names.Split ',' |> Set.ofArray in set.Contains
+
+let corpora = [ "linux"; "dotnet-runtime" ] |> List.filter (fun c -> wanted c && Directory.Exists(Path.Combine(data, c)))
 let patterns = [ "mutex_lock", []; "TODO", []; "struct file_operations", [ "-F" ]; "[A-Z]{5}_[A-Z]{5}", []; "hello", [ "-i" ]; "zzzznomatch", [] ]
 
-if corpora.IsEmpty then failwith "no corpora, run benchmarks/fetch.fsx"
 if not (File.Exists ferretDll) then failwith $"{ferretDll} not found, build src/Ferret.Cli in Release"
 
 /// Single-quotes an argument for hyperfine's command parser.
 let quote (s: string) = "'" + s.Replace("'", "'\\''") + "'"
 
 /// hyperfine runs each command with stdin on /dev/null, so neither tool searches stdin.
-let hyperfine (cwd: string) (commands: (string * string) list) =
+let hyperfine (cwd: string) (env: (string * string) list) (commands: (string * string * string option) list) =
     let json = Path.GetTempFileName()
     let psi = ProcessStartInfo("hyperfine", WorkingDirectory = cwd)
+    for k, v in env do
+        psi.Environment[k] <- v
     for a in [ "-N"; "--warmup"; "1"; "--runs"; string runs; "--ignore-failure"; "--export-json"; json ] do
         psi.ArgumentList.Add a
-    for name, command in commands do
+    for name, command, prepare in commands do
+        // hyperfine pairs --prepare with commands by position: give every command one or none.
+        psi.ArgumentList.Add "--prepare"
+        psi.ArgumentList.Add(defaultArg prepare "true")
         psi.ArgumentList.Add "--command-name"
         psi.ArgumentList.Add name
         psi.ArgumentList.Add command
@@ -61,8 +73,43 @@ let results =
                    pattern = pattern
                    flags = flags
                    timings =
-                    hyperfine cwd [ "rg", "rg --no-config " + args
-                                    "ferret", $"dotnet {quote ferretDll} {args}" ] |} ]
+                    hyperfine cwd [] [ "rg", "rg --no-config " + args, None
+                                       "ferret", $"dotnet {quote ferretDll} {args}", None ] |} ]
+
+// Ranked search. The index lives in a throwaway cache dir, so the user's own cache is untouched.
+let repo = Path.Combine(here, "..") |> Path.GetFullPath
+let lexCorpora =
+    [ for c, queries in [ "linux", [ "mutex lock"; "memory allocation failure" ]; "dotnet-runtime", [ "thread pool"; "garbage collection" ] ] do
+        let dir = Path.Combine(data, c)
+        if wanted c && Directory.Exists dir then yield c, dir, queries
+      for c, rel, queries in
+        [ "scifact", "corpus/scifact/docs", [ "gene expression cancer"; "vitamin deficiency" ]
+          "nfcorpus", "corpus/nfcorpus/docs", [ "breast cancer diet"; "cholesterol" ]
+          "fsharp-docs", "corpus/fsharp-docs/repo/docs/fsharp", [ "pattern matching"; "async workflow" ] ] do
+        let dir = Path.Combine(repo, rel)
+        if wanted c && Directory.Exists dir then yield c, dir, queries ]
+
+let lexResults =
+    [ for corpus, dir, queries in lexCorpora do
+        let cache = Path.Combine(Path.GetTempPath(), $"ferret-bench-{Guid.NewGuid():N}")
+        let indexFile = Path.Combine(cache, "lexical.idx")
+        try
+            for query in queries do
+                let ferret extra = $"dotnet {quote ferretDll} --lex {extra}{quote query}"
+                let timings =
+                    hyperfine dir [ "FERRET_CACHE_DIR", cache ]
+                        [ "per-run", ferret "--no-index ", None
+                          "index-build", ferret "", Some("rm -f " + quote indexFile)
+                          "index-warm", ferret "", None ]
+                yield
+                    {| corpus = corpus
+                       query = query
+                       indexBytes = FileInfo(indexFile).Length
+                       timings = timings |}
+        finally
+            if Directory.Exists cache then Directory.Delete(cache, true) ]
+
+if corpora.IsEmpty && lexCorpora.IsEmpty then failwith "no corpora, run benchmarks/fetch.fsx or mise run bootstrap"
 
 let out = Path.Combine(here, "results")
 Directory.CreateDirectory out |> ignore
@@ -72,6 +119,7 @@ let summary =
     {| runs = runs
        os = Runtime.InteropServices.RuntimeInformation.OSDescription
        hyperfine = hyperfineVersion
-       results = results |}
+       results = results
+       lex = lexResults |}
 File.WriteAllText(file, JsonSerializer.Serialize(summary, JsonSerializerOptions(WriteIndented = true)))
 printfn "wrote %s" file

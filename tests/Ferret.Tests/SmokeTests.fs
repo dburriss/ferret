@@ -13,14 +13,14 @@ type private Labelled =
       Relevant: string list
       Top1: string option }
 
-let private repoRoot () =
+let repoRoot () =
     let rec up (d: DirectoryInfo) =
         if isNull d then failwith "Ferret.slnx not found above the test assembly"
         elif File.Exists(Path.Combine(d.FullName, "Ferret.slnx")) then d.FullName
         else up d.Parent
     up (DirectoryInfo AppContext.BaseDirectory)
 
-let private smokeDir () = Path.Combine(repoRoot (), "tests", "corpus", "smoke")
+let smokeDir () = Path.Combine(repoRoot (), "tests", "corpus", "smoke")
 
 let private labels () : Labelled list =
     use doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(smokeDir (), "queries.json")))

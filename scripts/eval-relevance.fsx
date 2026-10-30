@@ -1,8 +1,11 @@
 // Runs Ferret's BM25 over fetched BEIR datasets and the F# docs set and prints nDCG@10, recall@100 and MRR@10.
 // Compares against benchmarks/relevance-baseline.json and exits 1 if nDCG@10 drops by more than the tolerance.
 // Build first: dotnet build -c Release src/Ferret
-// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update]
+// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity]
 //   no dataset: run all. --update: write the measured scores as the new baseline.
+// Every query also runs through the persisted-index path (Search.searchIndexed, in-memory store) and must give
+// exactly the same files, order, scores and excerpts as the per-run path; any difference exits 1.
+// --no-parity skips that and times only the per-run path. A saved and reloaded index must equal the in-memory one.
 #r "../src/Ferret/bin/Release/net10.0/Ferret.dll"
 
 open System
@@ -18,7 +21,9 @@ let baselinePath = Path.Combine(root, "benchmarks", "relevance-baseline.json")
 let args = fsi.CommandLineArgs |> Array.skip 1 |> List.ofArray
 let update = List.contains "--update" args
 
-let requested = args |> List.filter (fun a -> a <> "--update")
+let parity = not (List.contains "--no-parity" args)
+
+let requested = args |> List.filter (fun a -> a <> "--update" && a <> "--no-parity")
 let fullRun = requested.IsEmpty
 let names = if fullRun then [ "scifact"; "nfcorpus"; "fsharp-docs" ] else requested
 
@@ -94,22 +99,59 @@ let loadFsharpDocs () =
       qrels = items |> Array.map (fun q -> q.GetProperty("id").GetString(), rel q) |> Map.ofArray
       docId = fun f -> Path.GetRelativePath(docs, f).Replace('\\', '/') }
 
+/// Parity failures across all datasets, as readable lines.
+let parityFailures = ResizeArray<string>()
+
+let timed (watch: Diagnostics.Stopwatch) f =
+    watch.Start()
+    let result = f ()
+    watch.Stop()
+    result
+
 let evaluate name =
     let ds = if name = "fsharp-docs" then loadFsharpDocs () else loadBeir name
     let sw = Diagnostics.Stopwatch.StartNew()
+    let perRun = Diagnostics.Stopwatch()
+    let viaIndex = Diagnostics.Stopwatch()
+    let store = Index.MemoryIndexStore()
+    let mismatches = ref 0
 
     let scored =
         ds.queries
         |> Array.choose (fun (id, text, kind) ->
             ds.qrels.TryFind id
             |> Option.map (fun rel ->
-                let ranked =
-                    Search.search Ranking.bm25 files [ ds.docs ] text 100 |> List.map (fun d -> ds.docId d.File)
+                let results = timed perRun (fun () -> Search.search Ranking.bm25 files [ ds.docs ] text 100)
+                if parity then
+                    let fromIndex =
+                        timed viaIndex (fun () -> Search.searchIndexed store Ranking.bm25 files [ ds.docs ] text 100)
+                    if fromIndex <> results then
+                        mismatches.Value <- mismatches.Value + 1
+                        if mismatches.Value <= 5 then
+                            parityFailures.Add $"{name} query {id}: indexed results differ from per-run results"
+                let ranked = results |> List.map (fun d -> ds.docId d.File)
                 kind, (ndcgAt 10 ranked rel, recallAt 100 ranked rel, mrrAt 10 ranked rel)))
+
+    if parity then
+        // The disk format must preserve every entry.
+        let path = Path.Combine(Path.GetTempPath(), $"ferret-eval-{Guid.NewGuid():N}.idx")
+        try
+            let disk = DiskIndexStore.DiskIndexStore path :> Index.IIndexStore
+            disk.Save store.Current.Value
+            match disk.Load() with
+            | Some loaded when
+                loaded.Entries.Count = store.Current.Value.Entries.Count
+                && loaded.Entries |> Seq.forall (fun kv -> store.Current.Value.Entries[kv.Key] = kv.Value)
+                -> ()
+            | _ -> parityFailures.Add $"{name}: index saved to disk and reloaded differs from the in-memory index"
+        finally
+            File.Delete path
 
     let scores = scored |> Array.map snd
     let mean f = scores |> Array.averageBy f
     printfn "%s: %d queries, %d docs, %.0fs" name scores.Length (Directory.GetFiles(ds.docs, "*", SearchOption.AllDirectories).Length) sw.Elapsed.TotalSeconds
+    if parity then
+        printfn "  per-run %.1fs, indexed %.1fs (includes the first build), %d of %d queries differ" perRun.Elapsed.TotalSeconds viaIndex.Elapsed.TotalSeconds mismatches.Value scores.Length
     let kinds =
         [ for kind, rows in scored |> Array.groupBy fst |> Array.filter (fst >> (<>) "") ->
             kind, rows.Length, rows |> Array.averageBy (fun (_, (a, _, _)) -> a), rows |> Array.averageBy (fun (_, (_, _, c)) -> c) ]
@@ -204,6 +246,10 @@ let logRun () =
     else
         writeLog path hash
         printfn "run logged to %s" rel
+
+if parityFailures.Count > 0 then
+    parityFailures |> Seq.iter (eprintfn "PARITY %s")
+    exit 1
 
 // Partial runs are not logged: they would block the full run for the same inputs.
 if fullRun then logRun ()

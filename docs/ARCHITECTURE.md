@@ -30,10 +30,10 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Markdown` | Heading text and frontmatter (`title`, `description`, `tags`, parsed with Flexi.Yaml; invalid YAML yields no fields) extraction | yes |
 | `Ferret.Bm25` | Corpus stats, IDF, term score, boosts, deterministic ordering | yes |
 | `Ferret.Ranking` | `Ranker` seam and fusion (RRF) | yes |
-| `Ferret.Index` | Build, load and invalidate the token index and corpus stats | no (ports) |
+| `Ferret.Index` | Index entries, the `IIndexStore` port, version check (built per file; searched via `Search.searchIndexed`) | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run, no index). **Planned:** `Index`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run `search`, and `searchIndexed` over a persisted index), `Index` (`Entry`, `Snapshot`, `IIndexStore`, `MemoryIndexStore`, `Index.version`), `DiskIndexStore` (binary file, atomic save). **Planned:** the `--index`/`--clean`/`--status` commands and an inverted index. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
 
 ### Ports
 
@@ -45,7 +45,7 @@ The library defines interfaces. Callers provide adapters.
 | `IIndexStore` | Persist and load the cache (index, stats, version) |
 | `IEmbedder` | Embed text to vectors (**Future**, semantic package only) |
 
-The default adapters (disk file source, on-disk index store) ship in the library so embedding is a one-liner, but nothing in the core depends on them. Only `DiskFileSource` exists so far.
+The default adapters (disk file source, on-disk index store) ship in the library so embedding is a one-liner, but nothing in the core depends on them. `DiskFileSource` and `DiskIndexStore` exist. `IFileSource.Stamp` gives the change fingerprint index entries are checked against.
 
 ### Plain search (**Built**)
 
@@ -104,7 +104,7 @@ type Ranker = Query -> Candidate list -> ScoredDoc list
 ### Index and cache
 
 - Disposable. Built on first use, rebuilt when the index version changes.
-- Cache key includes ignore patterns and the normaliser version.
+- Built for lexical: entries are per file and keyed by full path, so ignore rules are applied by the walk on every run rather than baked into the cache key. The version is `FormatVersion * 1000 + NormaliserVersion`.
 - Incremental by file hash where feasible.
 - First semantic index is built off the query path.
 

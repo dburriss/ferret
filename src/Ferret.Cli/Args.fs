@@ -16,6 +16,7 @@ type FerretArgs =
     | Limit of count: int
     | Scores
     | Jsonl
+    | No_Index
     | Debug
 
     interface IArgParserTemplate with
@@ -33,6 +34,7 @@ type FerretArgs =
             | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
             | Scores -> "with --lex, prefix each result line with its relevance score."
             | Jsonl -> "with --lex, print one JSON object per result line (file, line, score, text)."
+            | No_Index -> "with --lex, ignore the persisted index and read every file."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

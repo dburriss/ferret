@@ -1,6 +1,6 @@
 # Benchmarks
 
-Two kinds of measurement live here: speed against `rg`, and relevance (ranking quality). Neither runs in CI. The plan and rationale are in `docs/TEST-CORPUS.md`.
+Two kinds of measurement live here: speed (against `rg`, and for the persisted index), and relevance (ranking quality). Neither runs in CI. The index's correctness checks (exact parity, invalidation, corrupt cache) are unit tests and do run in CI. The plan and rationale are in `docs/TEST-CORPUS.md`.
 
 ```
 benchmarks/
@@ -25,6 +25,8 @@ mise run bench [-- runs]   # builds Release, then runs hyperfine (default 10 run
 - The patterns cover a literal, a rare literal, a fixed string (`-F`), a regex, a case-insensitive match and a pattern with no match. They are listed at the top of `run.fsx`.
 - Output is `results/<date>-<machine>.json`: per tool and pattern, mean, median, min, stddev and peak RSS.
 - This is a search-speed check, so it uses code corpora. It says nothing about ranking quality.
+- It also times `--lex` per query on the perf corpora and any fetched BEIR / F# docs sets, in three modes: `per-run` (`--no-index`), `index-build` (cache deleted before every run) and `index-warm`. The cache lives in a throwaway dir (`FERRET_CACHE_DIR`). Results go under `lex` in the same file, with `indexBytes`.
+- `FERRET_BENCH_CORPORA=scifact,fsharp-docs` limits the run to named corpora, which skips the multi-GB ones.
 
 ## Relevance
 
@@ -42,7 +44,12 @@ The F# docs queries are hand-written with graded labels (2 = canonical page, 1 =
 mise run eval:relevance                    # all datasets, about 2.5 min (SciFact is most of it)
 mise run eval:relevance -- fsharp-docs     # one dataset, about 1s
 mise run eval:relevance -- --update        # record the measured scores as the new baseline
+mise run eval:relevance -- --no-parity     # skip the index parity pass
 ```
+
+### Index parity
+
+Unless `--no-parity` is given, every query also runs through the persisted-index path (`Search.searchIndexed`, in-memory store, so the first query builds and the rest reuse). Its results must equal the per-run results exactly: files, order, scores and excerpts. Any difference prints `PARITY` and exits 1, before a log is written or a baseline updated. After each dataset the index is also saved to disk and reloaded, and must equal the in-memory one. The nDCG gate is far too loose for this (0.01), which is why parity is exact. The run prints per-run and indexed times, so the speed-up shows up too (SciFact: about 177s vs 28s for 300 queries). The parity pass adds to the full run time.
 
 ### Baseline and regression gate
 
