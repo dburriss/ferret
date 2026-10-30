@@ -7,7 +7,7 @@ Ferret.Cli  ──►  Ferret (library)
  (Argu, I/O)      (pure core + ports)
 ```
 
-Status markers match PROJECT.md: **Planned** (designed, not built), **Future** (direction only).
+Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), **Future** (direction only).
 
 ## Principles
 
@@ -26,12 +26,13 @@ Status markers match PROJECT.md: **Planned** (designed, not built), **Future** (
 | `Ferret.Text` | Normaliser: tokenise, stop words, light suffix stemming. Versioned, shared by index and query | yes |
 | `Ferret.Ignore` | Gitignore-style pattern matching. Takes patterns, does no file I/O | yes |
 | `Ferret.Grep` | Regex/literal line matching for plain (ripgrep-compatible) search | yes |
+| `Ferret.FileSource` | `IFileSource` port and the `DiskFileSource` adapter (ignore-aware walk) | no (disk) |
 | `Ferret.Bm25` | Corpus stats, IDF, term score, boosts, deterministic ordering | yes |
 | `Ferret.Ranking` | `Ranker` seam and fusion (RRF) | yes |
 | `Ferret.Index` | Build, load and invalidate the token index and corpus stats | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Planned** except `Domain`, `Grep`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`. **Planned:** `Text`, `Bm25`, `Ranking` (the `Ranker` seam), `Index`, `Search`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
 
 ### Ports
 
@@ -39,11 +40,31 @@ The library defines interfaces. Callers provide adapters.
 
 | Port | Purpose |
 |------|---------|
-| `IFileSource` | Enumerate and read files under a root |
+| `IFileSource` | `Kind` (missing, file, directory), `Enumerate` a root, `ReadLines` of a file (**Built**) |
 | `IIndexStore` | Persist and load the cache (index, stats, version) |
 | `IEmbedder` | Embed text to vectors (**Future**, semantic package only) |
 
-The default adapters (disk file source, on-disk index store) ship in the library so embedding is a one-liner, but nothing in the core depends on them.
+The default adapters (disk file source, on-disk index store) ship in the library so embedding is a one-liner, but nothing in the core depends on them. Only `DiskFileSource` exists so far.
+
+### Plain search (**Built**)
+
+`ferret <pattern> [path...]`: `Grep.compile` builds a `Regex` from the pattern and `MatchOptions` (`-F`, `-i`, `-w`), `Grep.matchLines` filters lines, and `GrepCli` writes them. No index, no ranking.
+
+`DiskFileSource.Enumerate` walks like ripgrep:
+
+- Skips hidden entries, symlinks and binary files (a NUL byte in the first 8000 bytes).
+- Directory entries are visited in ordinal name order, so output is deterministic. Paths keep the root as given (nothing is prefixed when no path is passed).
+- An explicit file argument is always searched, whatever the ignore rules say.
+- Ignored directories are not entered.
+
+Ignore rules (`Ferret.Ignore`, pure: it takes lines, never reads files):
+
+- Per directory, `.gitignore`, `.ignore` and `.ferretignore` are concatenated in that order, and the last matching rule wins, so `.ferretignore` can re-include with `!`. Deeper directories override shallower ones.
+- `.gitignore` is honoured only inside a git repository (a `.git` in the root or an ancestor), as in `rg`.
+- Syntax: `#` comments, `!`, leading `/` and inner `/` anchor, trailing `/` is directory-only, `*`, `?`, `[...]`, `**` (leading, middle, trailing), `\` escapes, trailing spaces trimmed.
+- `check` matches one path; `isIgnored` also checks its ancestors.
+- Hand-written (patterns compile to `Regex`) rather than `Microsoft.Extensions.FileSystemGlobbing`, which has only include/exclude (no `!` with last-match-wins), only `*` and `**`, no gitignore anchoring or directory-only rules, and walks the tree itself so it cannot prune.
+- Not yet: ignore files in parent directories of the root, global gitignore, `.git/info/exclude`, `--no-ignore`, `--hidden`, `--exclude`.
 
 ### Search flow
 
@@ -110,7 +131,8 @@ ferret --version
 
 ```
 src/Ferret.Cli/
-  Args.fs            Argu DU: FerretArgs (flat, no subcommands)
+  Args.fs            Argu DU: FerretArgs (flat, no subcommands), argv helpers
+  Deps.fs            AdapterDeps: file source, stdout, stderr, debug flag
   GrepCli.fs         plain mode: regex/literal, file and line order
   RankedCli.fs       --lex | --sem | --hybrid
   MaintenanceCli.fs  --index, --clean, --status, --inspect
@@ -119,12 +141,17 @@ src/Ferret.Cli/
   Program.fs         entry point, mode selection, dispatch
 ```
 
+**Built:** `Args`, `Deps`, `GrepCli`, `Output` (text only) and `Program`, with `--version` handled inline in `Program.fs`. **Planned:** `RankedCli`, `MaintenanceCli`, `VersionCli` and the other renderers. Plain mode supports `-i`, `-F`, `-n`, `-l`, `-c`, `-w`, `-V` and `--debug`.
+
+The assembly is `Ferret.Cli`, not `ferret`: `ferret.dll` would collide with the library's `Ferret.dll` on case-insensitive file systems. The installed command is still `ferret` (`ToolCommandName`).
+
 ### Conventions
 
 - **Dependencies:** `AdapterDeps.create isDebug` builds the adapters (file source, index store, cwd, console) once in `main` and passes them to every command as `deps`.
 - **Commands:** each `XCli` module exposes `run : AdapterDeps -> XArgs -> int`, returning the exit code. Commands do no parsing and no process exit.
 - **Dispatch:** `Program.fs` uses active patterns over `ParseResults<FerretArgs>` to pick a command: maintenance flags and `--version` first, then a ranked mode if one is set, otherwise plain grep.
 - **Errors:** `ArguParseException` prints the message to stderr. Any other exception prints `ferret: unexpected error: <msg>`, plus the stack trace only with `--debug`.
+- **Argu gaps, handled in `Args.fs`:** Argu has no `--` end-of-options marker (`splitSeparator` cuts argv there and appends the rest as positionals), does not expand clustered short flags (`expandShortFlags`: `-in` becomes `-i -n`), and passes unknown flags to the `MainCommand` as positionals (`tryFindUnrecognizedFlag` turns them into a usage error).
 
 ### Mode rules
 
@@ -198,6 +225,10 @@ let main argv =
 
 `Output.fs` renders library results to text (default), table, `--json` or `--jsonl`. `--json` in plain mode is `rg`'s JSON Lines format. `--jsonl` is the ranked-mode equivalent for agents, with one result per line. `--no-snippet` returns metadata only and `--snippet-length <n>` caps excerpt size. Renderers take `SearchResult` and write to a `TextWriter`. The library never prints.
 
+## Tests
+
+`tests/Ferret.Tests`: xunit v3 on Microsoft Testing Platform (`global.json` selects the runner for `dotnet test`), with FsCheck properties (`FsCheck.Xunit.v3`) for the pure modules. `Ignore` and `Grep` have example tests plus properties. CLI tests run `GrepCli.run` against temp directory trees and compare fixed expected output and exit codes. They do not need `rg` installed.
+
 ## Consumers
 
 - **CLI:** `ferret` binary.
@@ -206,6 +237,5 @@ let main argv =
 
 ## Open questions
 
-- Argu mapping for a default command with a trailing positional list (`<pattern> [path...]`) and mode flags: confirm `MainCommand` handles it cleanly.
 - `--clean` is only meaningful with `--index`. Decide whether it errors alone or deletes the cache.
-- Glob library choice (gitignore-compatible matcher).
+- Plain mode does not read stdin. `rg` searches stdin when no path is given and stdin is piped. Ferret always searches the current directory.

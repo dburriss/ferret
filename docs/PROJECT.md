@@ -4,7 +4,7 @@ Ferret is a .NET library and CLI for searching text and markdown knowledge bases
 
 Ferret is primarily a library for .NET developers, with the CLI as a thin front end over it. It is not trying to replace [ck](https://github.com/BeaconBay/ck), which is more full featured. It is a slight alternative with different search details (BM25 lexical arm, file-level rollup, bounded output) and a first-class .NET API.
 
-Status of features is marked **Planned** (designed, not built) or **Future** (direction only). Detail lives in `research/`.
+Status of features is marked **Built**, **Planned** (designed, not built) or **Future** (direction only). Detail lives in `research/`.
 
 ## Problem space
 
@@ -43,12 +43,15 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 
 ## Features
 
-### Plain search (ripgrep-compatible)
+### Plain search (ripgrep-compatible) — Built
 
 - `ferret <pattern> [path...]` matches regex or literal text, unranked, in file and line order.
-- Same core flags, output format and exit codes as `rg` (0 on match, 1 on none).
-- Ignore handling follows ripgrep conventions (`.gitignore`, `.ignore`), plus `.ferretignore`.
+- Flags: `-i/--ignore-case`, `-F/--fixed-strings`, `-w/--word-regexp`, `-n/--line-number`, `-l/--files-with-matches`, `-c/--count`, `-V/--version`. Clustered short flags (`-in`) and `--` work.
+- Output follows `rg` when not on a terminal: `path:line`, or `path:line:text` with `-n`. A single file argument has no path prefix.
+- Exit codes as `rg`: 0 on match, 1 on none, 2 on error (including a missing path or a bad regex).
+- Skips hidden files, symlinks and binary files, and follows ignore files (see below).
 - No score, no limit, no ranking in this mode.
+- Not yet: `--json`, `-e`, `-A/-B/-C`, `-g`, `--hidden`, `-S/--smart-case`, stdin. Without a path, `rg` reads piped stdin. Ferret always searches the current directory.
 
 ### Ranked lexical search (BM25) — Planned
 
@@ -63,12 +66,12 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 - Ferret-only flags: `--limit` (max files), score column or field. These use names ripgrep does not, and `--limit` never reuses `-m/--max-count`.
 - Output formats: text, table, json, and `--jsonl` for agents.
 
-### Ignore globs — Planned
+### Ignore globs — Built, flags Planned
 
-- Nothing is excluded by default.
-- `.ferretignore` at the knowledge root: gitignore-style, `!` re-includes, additive to `.gitignore`.
-- The library accepts patterns and does no file I/O. Ignored files are dropped before corpus stats are computed, so they never skew `df` or `avgdl`.
-- `--exclude`, `--no-ignore` and `--no-ferretignore` for per-run control.
+- Built: `.gitignore` (inside a git repository), `.ignore` and `.ferretignore`, per directory, deeper directories win, and within a directory `.ferretignore` overrides `.ignore` overrides `.gitignore`. Gitignore syntax including `!` re-includes. Ignored directories are not entered.
+- Ferret adds no excludes of its own beyond `rg`'s defaults (hidden, binary, symlinks).
+- The library matcher (`Ferret.Ignore`) accepts patterns and does no file I/O. For ranked search, ignored files are dropped before corpus stats are computed, so they never skew `df` or `avgdl`.
+- Planned: `--exclude`, `--no-ignore` and `--no-ferretignore` for per-run control, ignore files in parent directories, global gitignore and `.git/info/exclude`.
 
 ### Library
 
@@ -110,7 +113,6 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 
 - Boost magnitudes need tuning on a real corpus.
 - Stemmer conservatism versus false matches.
-- Glob library choice (use an existing gitignore-compatible matcher).
 - Whether hybrid beats BM25 on real content. The next experiment is BM25, semantic and RRF on the PoC queries and labels.
 
 ## Related docs
