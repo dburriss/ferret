@@ -13,6 +13,21 @@ type Verdict =
 /// How a rule tests a path. Plain names and simple `*`/`prefix*` globs are by far the most
 /// common rules and are matched with string comparison; anything else goes through a regex.
 /// `Anchored` patterns apply to the whole path, the others to its last segment.
+/// A regex that starts out interpreted and is compiled once it has been tried often enough for
+/// the compile cost to pay off. Rules that never see many paths stay cheap to create.
+[<AllowNullLiteral>]
+type LazyRegex(pattern: string) =
+    static let threshold = 2000
+    let mutable regex = Regex(pattern, RegexOptions.CultureInvariant)
+    let mutable uses = 0
+
+    member _.IsMatch(input: string) =
+        if uses < threshold then
+            uses <- uses + 1
+            if uses = threshold then
+                regex <- Regex(pattern, RegexOptions.CultureInvariant ||| RegexOptions.Compiled)
+        regex.IsMatch input
+
 type Matcher =
     /// Anchored, no glob characters: the whole path equals the text.
     | Exact of string
@@ -22,7 +37,7 @@ type Matcher =
     | EndsWith of anchored: bool * text: string
     /// `text*`: the segment starts with the text.
     | StartsWith of anchored: bool * text: string
-    | Pattern of Regex
+    | Pattern of LazyRegex
 
 type Rule =
     { Matcher: Matcher
@@ -104,7 +119,7 @@ let private matcherFor (anchored: bool) (glob: string) : Matcher =
         StartsWith(anchored, glob.Substring(0, glob.Length - 1))
     else
         let prefix = if anchored then "" else "(?:.*/)?"
-        Pattern(Regex("^" + prefix + translate glob + "$", RegexOptions.CultureInvariant))
+        Pattern(LazyRegex("^" + prefix + translate glob + "$"))
 
 let private parseLine (raw: string) : Rule option =
     let line = trimTrailingSpaces (raw.TrimEnd '\r')

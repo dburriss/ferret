@@ -185,3 +185,17 @@ let ``string matchers agree with the regex form`` (Segment a) (Segment b) (dirs:
         verdict [ "*"; line ] path isDir = verdict [ "*"; viaRegex line ] path isDir
         && verdict [ line ] path isDir = verdict [ viaRegex line ] path isDir
         && verdict [ line ] a isDir = verdict [ viaRegex line ] a isDir)
+
+[<Fact>]
+let ``a regex rule gives the same verdicts before and after it is compiled`` () =
+    let layers = rules [ "[Bb]in/"; "docs/*/[Xx].md" ]
+    let probe () =
+        [ Ignore.check layers "a/Bin" true
+          Ignore.check layers "a/bin" false
+          Ignore.check layers "docs/q/x.md" false
+          Ignore.check layers "docs/q/r/x.md" false ]
+    let before = probe ()
+    for i in 1..5000 do
+        Ignore.check layers $"src/f{i}.cs" false |> ignore
+    Assert.Equal<Ignore.Verdict list>(before, probe ())
+    Assert.Equal<Ignore.Verdict list>([ Ignore.Ignored; Ignore.NoMatch; Ignore.Ignored; Ignore.NoMatch ], before)
