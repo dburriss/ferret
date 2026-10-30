@@ -1,0 +1,2 @@
+local.txt:needle
+sub/other.txt:needle

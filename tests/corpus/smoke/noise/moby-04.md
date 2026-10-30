@@ -1,0 +1,3 @@
+“I don’t allow it; I won’t have my premises spoiled. Go for the locksmith, there’s one about a mile from here. But avast!” putting her hand in her side-pocket, “here’s a key that’ll fit, I guess; let’s see.” And with that, she turned it in the lock; but, alas! Queequeg’s supplemental bolt remained unwithdrawn within.
+
+With a prodigious noise the door flew open, and the knob slamming against the wall, sent the plaster to the ceiling; and there, good heavens! there sat Queequeg, altogether cool and self-collected; right in the middle of the room; squatting on his hams, and holding Yojo on top of his head. He looked neither one way nor the other way, but sat like a carved image with scarce a sign of active life.

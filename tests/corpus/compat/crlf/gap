@@ -1,0 +1,1 @@
+rg keeps the trailing  on CRLF lines; Ferret's File.ReadLines strips it.

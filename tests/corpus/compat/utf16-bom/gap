@@ -1,0 +1,1 @@
+rg transcodes UTF-16 with a BOM; Ferret sees the NUL bytes and skips the file as binary.

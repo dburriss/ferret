@@ -1,0 +1,2 @@
+a.txt:1:needle one
+a.txt:3:needle two

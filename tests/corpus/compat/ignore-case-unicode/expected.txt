@@ -1,0 +1,2 @@
+a.txt:École Normale
+a.txt:école primaire

@@ -1,0 +1,3 @@
+This text is a combination of etexts, one from the now-defunct ERIS project at Virginia Tech and one from Project Gutenberg’s archives. The proofreaders of this version are indebted to The University of Adelaide Library for preserving the Virginia Tech version. The resulting etext was compared with a public domain hard copy version of the text.
+
+The pale Usher—threadbare in coat, heart, body, and brain; I see him now. He was ever dusting his old lexicons and grammars, with a queer handkerchief, mockingly embellished with all the gay flags of all the known nations of the world. He loved to dust his old grammars; it somehow mildly reminded him of his mortality.

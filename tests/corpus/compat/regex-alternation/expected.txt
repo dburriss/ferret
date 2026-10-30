@@ -1,0 +1,4 @@
+a.txt:1:color
+a.txt:2:colour
+a.txt:3:grey
+a.txt:4:gray
