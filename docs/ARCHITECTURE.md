@@ -57,7 +57,9 @@ The default adapters (disk file source, on-disk index store) ship in the library
 - An explicit file argument is always searched, whatever the ignore rules say.
 - Ignored directories are not entered.
 
-Stdin: `GrepCli` searches stdin for a `-` path, or when no path is given and `AdapterDeps.StdinIsReadable` is true. Otherwise no path means the current directory. Stdin is read once and named `<stdin>` in output when several inputs are searched. `StdinIsReadable` is computed in `Deps.fs`: stdin must be redirected, and on Unix not a seekable empty stream. .NET cannot stat fd 0 portably, so this is a heuristic for rg's pipe/file/socket check. It handles `/dev/null` (falls back to the directory), pipes, sockets and non-empty files like `rg`. It differs only for `< emptyfile`, which falls back to the directory where `rg` searches the empty input.
+Stdin: `GrepCli` searches stdin for a `-` path, or when no path is given and `AdapterDeps.StdinIsReadable` is true. Otherwise no path means the current directory. Stdin is read once and named `<stdin>` in output when several inputs are searched.
+
+`StdinIsReadable` follows `rg`: stdin must be a regular file, pipe or socket, so a terminal or `/dev/null` falls back to the directory and an empty file or empty pipe searches nothing (exit 1). `Deps.fs` stats fd 0 with a direct `fstat` P/Invoke because .NET has no portable way to do it. `st_mode` offsets are listed per platform (macOS, Linux x64, Linux arm64), with `__fxstat` as the fallback for glibc before 2.33. On Windows, or any platform not listed, it uses `Console.IsInputRedirected`, then a seekable-and-empty heuristic that wrongly treats `< emptyfile` as no stdin. `Deps.stdinModeIsSearchable` is the pure decision and is unit tested.
 
 Ignore rules (`Ferret.Ignore`, pure: it takes lines, never reads files):
 
@@ -239,4 +241,5 @@ let main argv =
 
 ## Open questions
 
+- **CI: stdin detection is only verified on macOS (arm64).** Add a CI matrix (Linux x64, Linux arm64 if available, Windows, macOS) that runs the real binary for each case: pipe, empty pipe, `< nonempty file`, `< emptyfile`, `< /dev/null` (`< NUL` on Windows), and a terminal if one can be allocated. Expected: pipe and non-empty file search stdin, empty pipe and empty file exit 1, `/dev/null` searches the current directory. The Linux offsets, the `__fxstat` fallback (needs an image with glibc before 2.33, or musl) and the Windows path have never been run. The unit tests only cover the mode decision, not the syscall.
 - `--clean` is only meaningful with `--index`. Decide whether it errors alone or deletes the cache.
