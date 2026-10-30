@@ -21,3 +21,9 @@ let writePath (w: TextWriter) (path: string) = w.WriteLine path
 let writeCount (w: TextWriter) (withFilename: bool) (path: string) (count: int) =
     writePrefix w withFilename path
     w.WriteLine count
+
+/// One `path:line:text` line per excerpt, files in rank order.
+let writeRanked (w: TextWriter) (docs: ScoredDoc list) =
+    for doc in docs do
+        for hit in doc.Excerpts do
+            writeHit w true true hit

@@ -17,3 +17,9 @@ type Hit =
     { Path: string
       LineNumber: int
       Line: string }
+
+/// A file ranked by relevance, with the lines that matched the query terms.
+type ScoredDoc =
+    { File: string
+      Score: float
+      Excerpts: Hit list }

@@ -7,6 +7,7 @@ open Ferret.Domain
 open Ferret.Cli.Args
 open Ferret.Cli.Deps
 open Ferret.Cli.GrepCli
+open Ferret.Cli.RankedCli
 
 let private (|VersionCmd|_|) (r: ParseResults<FerretArgs>) =
     if r.Contains Version then Some() else None
@@ -28,6 +29,24 @@ let private toGrepArgs (r: ParseResults<FerretArgs>) (afterSeparator: string lis
                   WordRegexp = r.Contains Word_Regexp }
               LineNumbers = r.Contains Line_Number
               Mode = mode }
+
+let private defaultLimit = 100
+
+/// Ranked search arguments, or a usage error. Regex-only flags make no sense with terms.
+let private toRankedArgs (r: ParseResults<FerretArgs>) (afterSeparator: string list) =
+    let regexOnly =
+        [ r.Contains Ignore_Case, "-i"
+          r.Contains Fixed_Strings, "-F"
+          r.Contains Word_Regexp, "-w"
+          r.Contains Files_With_Matches, "-l"
+          r.Contains Count, "-c" ]
+        |> List.tryFind fst
+    match regexOnly, r.TryGetResult Limit, r.GetResults Positional @ afterSeparator with
+    | Some(_, name), _, _ -> Error $"{name} cannot be used with --lex"
+    | _, Some limit, _ when limit < 1 -> Error "--limit must be at least 1"
+    | _, _, [] -> Error "--lex needs query terms"
+    | _, limit, query :: paths ->
+        Ok { Query = query; Paths = paths; Limit = defaultArg limit defaultLimit }
 
 let private version () =
     let assembly = Assembly.GetExecutingAssembly()
@@ -51,6 +70,15 @@ let main argv =
         | None ->
             match parsed with
             | VersionCmd() -> version ()
+            | _ when parsed.Contains Lex ->
+                match toRankedArgs parsed afterSeparator with
+                | Ok cmd -> RankedCli.run (AdapterDeps.create isDebug) cmd
+                | Error message ->
+                    eprintfn "ferret: %s" message
+                    2
+            | _ when parsed.Contains Limit ->
+                eprintfn "ferret: --limit requires --lex"
+                2
             | _ ->
                 match toGrepArgs parsed afterSeparator with
                 | Some cmd -> GrepCli.run (AdapterDeps.create isDebug) cmd

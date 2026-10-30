@@ -54,9 +54,12 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 - Stdin: with no path and piped input, Ferret searches stdin. `-` means stdin explicitly and can be mixed with paths. Stdin hits have no path prefix unless several inputs are searched, then stdin is named `<stdin>`. With a terminal or `/dev/null` on stdin it searches the current directory.
 - Not yet: `--json`, `-e`, `-v`, `-q`, `-A/-B/-C`, `-g`, `--hidden`, `-S/--smart-case`.
 
-### Ranked lexical search (BM25) — Planned
+### Ranked lexical search (BM25) — Partly built
 
 Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
+
+- **Built:** `ferret --lex <terms> [path...] [--limit N]`. Computed per run with no persisted index, over the same file walk and ignore rules as plain search. The tokenizer lowercases and splits on non-alphanumerics. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit` without `--lex` is a usage error.
+- **Planned:** everything below that is not in the Built line: boosts, stop words, stemming, tag filtering, a persisted index, scores and the table, json and jsonl output.
 
 - BM25 over a token index (`K1 = 1.2`, `B = 0.75`, non-negative IDF), deterministic ordering with path tie-break.
 - OR semantics, made safe by ranking: more and rarer matched terms rise to the top.

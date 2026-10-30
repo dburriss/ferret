@@ -12,6 +12,9 @@
     <Compile Include="Ignore.fs" />
     <Compile Include="Grep.fs" />
     <Compile Include="FileSource.fs" />
+    <Compile Include="Text.fs" />
+    <Compile Include="Bm25.fs" />
+    <Compile Include="Search.fs" />
   </ItemGroup>
 
 </Project>

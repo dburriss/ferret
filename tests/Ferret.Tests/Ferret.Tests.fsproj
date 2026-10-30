@@ -9,6 +9,8 @@
   <ItemGroup>
     <Compile Include="IgnoreTests.fs" />
     <Compile Include="GrepTests.fs" />
+    <Compile Include="TextTests.fs" />
+    <Compile Include="Bm25Tests.fs" />
     <Compile Include="CliTests.fs" />
   </ItemGroup>
 

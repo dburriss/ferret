@@ -12,6 +12,8 @@ type FerretArgs =
     | [<AltCommandLine("-c")>] Count
     | [<AltCommandLine("-w")>] Word_Regexp
     | [<AltCommandLine("-V")>] Version
+    | Lex
+    | Limit of count: int
     | Debug
 
     interface IArgParserTemplate with
@@ -25,6 +27,8 @@ type FerretArgs =
             | Count -> "print the number of matching lines per file."
             | Word_Regexp -> "only match whole words."
             | Version -> "print the version."
+            | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
+            | Limit _ -> "with --lex, the maximum number of files to return (default: 100)."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

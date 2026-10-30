@@ -267,3 +267,76 @@ let ``character devices, block devices and directories are not`` () =
     Assert.False(Deps.stdinModeIsSearchable 0o020666u) // /dev/null, a tty
     Assert.False(Deps.stdinModeIsSearchable 0o060660u) // block device
     Assert.False(Deps.stdinModeIsSearchable 0o040755u) // directory
+
+let private ranked query paths limit : RankedCli.RankedArgs = { Query = query; Paths = paths; Limit = limit }
+
+let private runRanked (args: RankedCli.RankedArgs) =
+    let out = new StringWriter()
+    let err = new StringWriter()
+    let deps =
+        { Files = withStdin []
+          Out = out
+          Err = err
+          StdinIsReadable = false
+          IsDebug = false }
+    let code = RankedCli.run deps args
+    code, out.ToString().Replace("\r\n", "\n"), err.ToString().Replace("\r\n", "\n")
+
+let private rankedTree =
+    [ "many.txt", "apple apple apple\nbanana\n"
+      "once.txt", "apple\n"
+      "none.txt", "cherry\n" ]
+
+[<Fact>]
+let ``lex ranks by relevance and skips files without the term`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked (ranked "apple" [ d ] 100)
+        Assert.Equal(0, code)
+        Assert.Equal(lines [ $"{d}/many.txt:1:apple apple apple"; $"{d}/once.txt:1:apple" ], out))
+
+[<Fact>]
+let ``lex limit caps the number of files`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked (ranked "apple" [ d ] 1)
+        Assert.Equal(0, code)
+        Assert.Equal(lines [ $"{d}/many.txt:1:apple apple apple" ], out))
+
+[<Fact>]
+let ``lex uses OR semantics over terms`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked (ranked "banana cherry" [ d ] 100)
+        Assert.Equal(0, code)
+        Assert.Contains($"{d}/many.txt:2:banana", out)
+        Assert.Contains($"{d}/none.txt:1:cherry", out))
+
+[<Fact>]
+let ``lex shows at most three excerpt lines per file`` () =
+    withTree [ "a.txt", "x\nx\nx\nx\n" ] (fun d ->
+        let _, out, _ = runRanked (ranked "x" [ d ] 100)
+        Assert.Equal(lines [ $"{d}/a.txt:1:x"; $"{d}/a.txt:2:x"; $"{d}/a.txt:3:x" ], out))
+
+[<Fact>]
+let ``lex ties break by path`` () =
+    withTree [ "b.txt", "x\n"; "a.txt", "x\n" ] (fun d ->
+        let _, out, _ = runRanked (ranked "x" [ d ] 100)
+        Assert.Equal(lines [ $"{d}/a.txt:1:x"; $"{d}/b.txt:1:x" ], out))
+
+[<Fact>]
+let ``lex ignores ignored files`` () =
+    withTree [ "a.txt", "apple\n"; "skip.txt", "apple apple\n"; ".ignore", "skip.txt\n" ] (fun d ->
+        let _, out, _ = runRanked (ranked "apple" [ d ] 100)
+        Assert.Equal(lines [ $"{d}/a.txt:1:apple" ], out))
+
+[<Fact>]
+let ``lex with no match exits 1`` () =
+    withTree rankedTree (fun d ->
+        let code, out, _ = runRanked (ranked "zebra" [ d ] 100)
+        Assert.Equal(1, code)
+        Assert.Equal("", out))
+
+[<Fact>]
+let ``lex with a missing path exits 2`` () =
+    withTree rankedTree (fun d ->
+        let code, _, err = runRanked (ranked "apple" [ $"{d}/nope" ] 100)
+        Assert.Equal(2, code)
+        Assert.Contains("No such file or directory", err))
