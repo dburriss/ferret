@@ -226,3 +226,27 @@ let ``per-run search emits walk, read, rank and excerpts`` () =
     withTree [ "a.txt", "apple\n" ] (fun root ->
         let phases = withPhases (fun () -> perRun root "apple" |> ignore)
         Assert.Equal<string list>([ "ferret.walk"; "ferret.read"; "ferret.rank"; "ferret.excerpts" ], phases |> List.map _.OperationName))
+
+[<Fact>]
+let ``a warm run saves nothing when a file cannot be read`` () =
+    withTree [ "a.txt", "apple\n"; "bad.txt", "apple\n" ] (fun root ->
+        let unreadable =
+            { new IFileSource with
+                member _.Kind p = disk.Kind p
+                member _.Enumerate r = disk.Enumerate r
+                member _.ReadLines p = if p.EndsWith "bad.txt" then None else disk.ReadLines p
+                member _.Stamp p = disk.Stamp p
+                member _.ReadStdin() = Seq.empty }
+        let saves = ref 0
+        let memory = MemoryIndexStore()
+        let store =
+            { new IIndexStore with
+                member _.Load() = (memory :> IIndexStore).Load()
+                member _.Save s =
+                    saves.Value <- saves.Value + 1
+                    (memory :> IIndexStore).Save s }
+        let run () = Search.searchIndexed store Ranking.bm25 unreadable [ root ] "apple" 100 |> ignore
+        run ()
+        Assert.Equal(1, saves.Value)
+        run ()
+        Assert.Equal(1, saves.Value))

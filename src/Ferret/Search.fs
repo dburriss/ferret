@@ -196,15 +196,18 @@ let searchIndexed
                             reused <- reused + 1
                             Some(candidateOf terms termSet path entry)
                         | cached, _ ->
-                            changed <- true
                             match stamp |> Option.bind (buildEntry files path) with
                             | Some entry ->
                                 seen.Add key |> ignore
                                 entries[key] <- entry
+                                changed <- true
                                 built <- built + 1
                                 Some(candidateOf terms termSet path entry)
                             | None ->
-                                if cached then entries.Remove key |> ignore
+                                // A file that cannot be read and has no entry changes nothing.
+                                if cached then
+                                    entries.Remove key |> ignore
+                                    changed <- true
                                 None)
                 tag a "files.total" walked.Length
                 tag a "files.reused" reused
