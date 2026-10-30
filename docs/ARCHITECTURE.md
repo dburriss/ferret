@@ -40,7 +40,7 @@ The library defines interfaces. Callers provide adapters.
 
 | Port | Purpose |
 |------|---------|
-| `IFileSource` | `Kind` (missing, file, directory), `Enumerate` a root, `ReadLines` of a file (**Built**) |
+| `IFileSource` | `Kind` (missing, file, directory), `Enumerate` a root, `ReadLines` of a file, `ReadStdin` (**Built**) |
 | `IIndexStore` | Persist and load the cache (index, stats, version) |
 | `IEmbedder` | Embed text to vectors (**Future**, semantic package only) |
 
@@ -56,6 +56,8 @@ The default adapters (disk file source, on-disk index store) ship in the library
 - Directory entries are visited in ordinal name order, so output is deterministic. Paths keep the root as given (nothing is prefixed when no path is passed).
 - An explicit file argument is always searched, whatever the ignore rules say.
 - Ignored directories are not entered.
+
+Stdin: `GrepCli` searches stdin for a `-` path, or when no path is given and `AdapterDeps.StdinIsReadable` is true. Otherwise no path means the current directory. Stdin is read once and named `<stdin>` in output when several inputs are searched. `StdinIsReadable` is computed in `Deps.fs`: stdin must be redirected, and on Unix not a seekable empty stream. .NET cannot stat fd 0 portably, so this is a heuristic for rg's pipe/file/socket check. It handles `/dev/null` (falls back to the directory), pipes, sockets and non-empty files like `rg`. It differs only for `< emptyfile`, which falls back to the directory where `rg` searches the empty input.
 
 Ignore rules (`Ferret.Ignore`, pure: it takes lines, never reads files):
 
@@ -132,7 +134,7 @@ ferret --version
 ```
 src/Ferret.Cli/
   Args.fs            Argu DU: FerretArgs (flat, no subcommands), argv helpers
-  Deps.fs            AdapterDeps: file source, stdout, stderr, debug flag
+  Deps.fs            AdapterDeps: file source, stdout, stderr, stdin check, debug flag
   GrepCli.fs         plain mode: regex/literal, file and line order
   RankedCli.fs       --lex | --sem | --hybrid
   MaintenanceCli.fs  --index, --clean, --status, --inspect
@@ -238,4 +240,3 @@ let main argv =
 ## Open questions
 
 - `--clean` is only meaningful with `--index`. Decide whether it errors alone or deletes the cache.
-- Plain mode does not read stdin. `rg` searches stdin when no path is given and stdin is piped. Ferret always searches the current directory.

@@ -51,7 +51,8 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 - Exit codes as `rg`: 0 on match, 1 on none, 2 on error (including a missing path or a bad regex).
 - Skips hidden files, symlinks and binary files, and follows ignore files (see below).
 - No score, no limit, no ranking in this mode.
-- Not yet: `--json`, `-e`, `-A/-B/-C`, `-g`, `--hidden`, `-S/--smart-case`, stdin. Without a path, `rg` reads piped stdin. Ferret always searches the current directory.
+- Stdin: with no path and piped input, Ferret searches stdin. `-` means stdin explicitly and can be mixed with paths. Stdin hits have no path prefix unless several inputs are searched, then stdin is named `<stdin>`. With a terminal or `/dev/null` on stdin it searches the current directory.
+- Not yet: `--json`, `-e`, `-v`, `-q`, `-A/-B/-C`, `-g`, `--hidden`, `-S/--smart-case`.
 
 ### Ranked lexical search (BM25) — Planned
 
