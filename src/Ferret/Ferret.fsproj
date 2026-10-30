@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Version>0.1.0</Version>
     <PackageId>Ferret</PackageId>
+    <!-- scripts/eval-relevance.fsx references the built dll directly and needs Flexi.Yaml beside it. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <Description>Ripgrep-compatible search with ranked lexical and semantic search for text and markdown knowledge bases.</Description>
   </PropertyGroup>
 
@@ -13,9 +15,14 @@
     <Compile Include="Grep.fs" />
     <Compile Include="FileSource.fs" />
     <Compile Include="Text.fs" />
+    <Compile Include="Markdown.fs" />
     <Compile Include="Bm25.fs" />
     <Compile Include="Ranking.fs" />
     <Compile Include="Search.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Flexi.Yaml" Version="0.1.0" />
   </ItemGroup>
 
 </Project>

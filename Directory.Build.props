@@ -1,0 +1,8 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Flexi.Yaml needs at least this FSharp.Core; the SDK's implicit version is older. -->
+    <FSharpCoreImplicitPackageVersion>10.1.403</FSharpCoreImplicitPackageVersion>
+  </PropertyGroup>
+
+</Project>

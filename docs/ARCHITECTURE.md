@@ -27,6 +27,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Ignore` | Gitignore-style pattern matching. Takes patterns, does no file I/O | yes |
 | `Ferret.Grep` | Regex/literal line matching for plain (ripgrep-compatible) search | yes |
 | `Ferret.FileSource` | `IFileSource` port and the `DiskFileSource` adapter (ignore-aware walk) | no (disk) |
+| `Ferret.Markdown` | Heading text and frontmatter (`title`, `description`, `tags`, parsed with Flexi.Yaml; invalid YAML yields no fields) extraction | yes |
 | `Ferret.Bm25` | Corpus stats, IDF, term score, boosts, deterministic ordering | yes |
 | `Ferret.Ranking` | `Ranker` seam and fusion (RRF) | yes |
 | `Ferret.Index` | Build, load and invalidate the token index and corpus stats | no (ports) |
@@ -96,7 +97,7 @@ Ignored files are dropped before stats are computed, so they never skew `df` or 
 type Ranker = Query -> Candidate list -> ScoredDoc list
 ```
 
-- `Ranking.bm25`: **Built.** `K1 = 1.2`, `B = 0.75`, non-negative IDF, boosts as named constants, ties broken by ordinal path.
+- `Ranking.bm25`: **Built.** `K1 = 1.2`, `B = 0.75`, non-negative IDF, score multiplied by `Bm25.boost` (named per-field constants: path 0.3, heading 0.5, frontmatter title 0.5, description 0.3, tags 0.5, each scaled by the share of query terms in that field), ties broken by ordinal path. Headings and frontmatter are read only from `.md`/`.markdown`/`.mdx` files (`Ferret.Markdown`); README and concept-file boosts are not built.
 - `Semantic.ranker`: **Future.** Chunk by heading, paragraph, then line or word. Roll chunk hits up to files with `max`. The best chunk is the excerpt.
 - `Ranking.fuse`: **Future.** Reciprocal rank fusion, `k = 60`, optional weights, top 50-100 per ranker.
 

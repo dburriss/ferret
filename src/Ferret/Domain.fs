@@ -23,11 +23,22 @@ type Query =
     { Text: string
       Terms: string list }
 
-/// A file offered to a ranker: its token count and the frequency of each query term in it.
+/// Where a boostable query-term match was found, beyond the body text.
+[<RequireQualifiedAccess>]
+type Field =
+    | Path
+    | Heading
+    | Title
+    | Description
+    | TagList
+
+/// A file offered to a ranker: its token count, the frequency of each query term in it and, per
+/// field, which query terms appear there.
 type Candidate =
     { Path: string
       Length: int
-      TermFreq: Map<string, int> }
+      TermFreq: Map<string, int>
+      FieldTerms: Map<Field, Set<string>> }
 
 /// A file ranked by relevance, with the lines that matched the query terms.
 type ScoredDoc =

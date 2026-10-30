@@ -59,11 +59,11 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
 
 - **Built:** `ferret --lex <terms> [path...] [--limit N] [--scores] [--jsonl]`. Computed per run with no persisted index, over the same file walk and ignore rules as plain search. The tokenizer lowercases, splits on non-alphanumerics, drops stop words and applies light suffix stemming (`mock` matches `mocked`). Because stop words are dropped, a query that is only a stop word (`in`, `is`, `to`) returns nothing. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. `--scores` prefixes each line with `[score]` (4 decimals, e.g. `[2.4131] path:line:text`). `--jsonl` prints one JSON object per excerpt line (`file`, `line`, `score`, `text`) for agents. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit`, `--scores` or `--jsonl` without `--lex` is a usage error.
-- **Planned:** everything below that is not in the Built line: boosts, tag filtering, a persisted index, the table and json output.
+- **Planned:** everything below that is not in the Built line: README and concept-file boosts, tag filtering, a persisted index, the table and json output.
 
 - BM25 over a token index (`K1 = 1.2`, `B = 0.75`, non-negative IDF), deterministic ordering with path tie-break.
 - OR semantics, made safe by ranking: more and rarer matched terms rise to the top.
-- Boosts for query terms in path or title, README files and concept files, kept as named constants.
+- Boosts for query terms in path, Markdown headings and frontmatter `title`/`description`/`tags` (**Built**, named constants), plus README files and concept files (planned).
 - Stop-word removal and light suffix stemming (`mock` matches `mocked`), applied identically at index and query time.
 - Corpus stats come from the whole indexed corpus, so scores are comparable across filtered queries.
 - Tag filtering (AND) narrows candidates first, then BM25 ranks them.
