@@ -17,6 +17,8 @@ type IFileSource =
     abstract Enumerate: root: string -> seq<string>
     /// Lines of a file, or `None` when it is binary or unreadable.
     abstract ReadLines: path: string -> seq<string> option
+    /// Lines of standard input. Single use: the sequence consumes the stream.
+    abstract ReadStdin: unit -> seq<string>
 
 let private real (path: string) = if path = "" then "." else path
 
@@ -93,3 +95,12 @@ type DiskFileSource() =
                 else Some(File.ReadLines path)
             with :? IOException | :? UnauthorizedAccessException ->
                 None
+
+        member _.ReadStdin() =
+            let reader = new StreamReader(Console.OpenStandardInput(), Text.UTF8Encoding(false))
+            Seq.unfold
+                (fun () ->
+                    match reader.ReadLine() with
+                    | null -> None
+                    | line -> Some(line, ()))
+                ()

@@ -27,17 +27,29 @@ let private grep pattern paths =
       LineNumbers = false
       Mode = ShowLines }
 
-/// Exit code, stdout, stderr.
-let private run (args: GrepArgs) =
+/// Disk file source whose stdin is the given lines.
+let private withStdin (stdin: string list) =
+    let disk = DiskFileSource() :> IFileSource
+    { new IFileSource with
+        member _.Kind p = disk.Kind p
+        member _.Enumerate r = disk.Enumerate r
+        member _.ReadLines p = disk.ReadLines p
+        member _.ReadStdin() = Seq.ofList stdin }
+
+/// Exit code, stdout, stderr. `stdin` is `Some lines` when stdin is piped.
+let private runWith (stdin: string list option) (args: GrepArgs) =
     let out = new StringWriter()
     let err = new StringWriter()
     let deps =
-        { Files = DiskFileSource()
+        { Files = withStdin (Option.defaultValue [] stdin)
           Out = out
           Err = err
+          StdinIsReadable = Option.isSome stdin
           IsDebug = false }
     let code = GrepCli.run deps args
     code, out.ToString().Replace("\r\n", "\n"), err.ToString().Replace("\r\n", "\n")
+
+let private run (args: GrepArgs) = runWith None args
 
 let private lines (xs: string list) = String.concat "\n" xs + (if xs.IsEmpty then "" else "\n")
 
@@ -186,3 +198,60 @@ let ``argv is split at the first separator`` () =
 let ``dash-prefixed positionals are unrecognized flags`` () =
     Assert.Equal(Some "--bogus", Args.tryFindUnrecognizedFlag [ "foo"; "--bogus" ])
     Assert.Equal(None, Args.tryFindUnrecognizedFlag [ "foo"; "docs"; "-" ])
+
+let private piped = [ "alpha"; "hello stdin"; "omega" ]
+
+[<Fact>]
+let ``piped stdin is searched when no path is given`` () =
+    let code, out, _ = runWith (Some piped) { grep "hello" [] with LineNumbers = true }
+    Assert.Equal(0, code)
+    Assert.Equal("2:hello stdin\n", out)
+
+[<Fact>]
+let ``no match on stdin exits 1`` () =
+    let code, out, _ = runWith (Some piped) (grep "zzz" [])
+    Assert.Equal(1, code)
+    Assert.Equal("", out)
+
+[<Fact>]
+let ``a dash path reads stdin`` () =
+    let code, out, _ = runWith (Some piped) (grep "hello" [ "-" ])
+    Assert.Equal(0, code)
+    Assert.Equal("hello stdin\n", out)
+
+[<Fact>]
+let ``a dash path reads stdin even when stdin is not detected as piped`` () =
+    let disk = withStdin piped
+    let out = new StringWriter()
+    let deps = { Files = disk; Out = out; Err = new StringWriter(); StdinIsReadable = false; IsDebug = false }
+    Assert.Equal(0, GrepCli.run deps (grep "hello" [ "-" ]))
+    Assert.Equal("hello stdin\n", out.ToString().Replace("\r\n", "\n"))
+
+[<Fact>]
+let ``an explicit path wins over piped stdin`` () =
+    withTree tree (fun d ->
+        let code, out, _ = runWith (Some piped) (grep "hello" [ $"{d}/a.txt" ])
+        Assert.Equal(0, code)
+        Assert.Equal(lines [ "hello world"; "hello again" ], out))
+
+[<Fact>]
+let ``stdin and a file together get path prefixes`` () =
+    withTree tree (fun d ->
+        let _, out, _ = runWith (Some piped) (grep "hello" [ "-"; $"{d}/sub/b.txt" ])
+        Assert.Equal(lines [ "<stdin>:hello stdin"; $"{d}/sub/b.txt:say hello" ], out))
+
+[<Fact>]
+let ``stdin is named in files-with-matches`` () =
+    withTree tree (fun d ->
+        let _, out, _ = runWith (Some piped) { grep "hello" [ "-"; $"{d}/sub/b.txt" ] with Mode = ShowPaths }
+        Assert.Equal(lines [ "<stdin>"; $"{d}/sub/b.txt" ], out))
+
+[<Fact>]
+let ``count on stdin alone is bare`` () =
+    let _, out, _ = runWith (Some [ "a"; "a"; "b" ]) { grep "a" [] with Mode = ShowCounts }
+    Assert.Equal("2\n", out)
+
+[<Fact>]
+let ``stdin is read once when given twice`` () =
+    let _, out, _ = runWith (Some piped) (grep "hello" [ "-"; "-" ])
+    Assert.Equal("<stdin>:hello stdin\n", out)
