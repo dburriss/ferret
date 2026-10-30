@@ -1,149 +1,213 @@
 {
   "hyperfine": "hyperfine 2.0.0",
+  "lex": [
+    {
+      "corpus": "dotnet-runtime",
+      "indexBytes": 121402871,
+      "query": "thread pool",
+      "timings": [
+        {
+          "mean_ms": 18567.658347,
+          "median_ms": 17805.974417,
+          "min_ms": 17782.254166000002,
+          "peak_rss_mib": 107.46875,
+          "stddev_ms": 1339.8700981718464,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 25639.16190233333,
+          "median_ms": 25690.672040999998,
+          "min_ms": 25330.293875,
+          "peak_rss_mib": 871.921875,
+          "stddev_ms": 286.60585788954893,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 12747.080514,
+          "median_ms": 12627.041042,
+          "min_ms": 12603.13525,
+          "peak_rss_mib": 865.890625,
+          "stddev_ms": 228.92974326969636,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "indexBytes": 121402871,
+      "query": "garbage collection",
+      "timings": [
+        {
+          "mean_ms": 17628.258292000002,
+          "median_ms": 17655.857292,
+          "min_ms": 17527.295041999998,
+          "peak_rss_mib": 108.359375,
+          "stddev_ms": 90.38140248310255,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 25512.935902666668,
+          "median_ms": 25490.278041,
+          "min_ms": 25259.030166999997,
+          "peak_rss_mib": 874.125,
+          "stddev_ms": 265.95951258574365,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 12749.525666666665,
+          "median_ms": 12698.611042,
+          "min_ms": 12678.926833,
+          "peak_rss_mib": 859.03125,
+          "stddev_ms": 105.69298670244824,
+          "tool": "index-warm"
+        }
+      ]
+    }
+  ],
   "os": "macOS 26.7.1",
   "results": [
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [],
       "pattern": "mutex_lock",
       "timings": [
         {
-          "mean_ms": 10.037116900000001,
-          "median_ms": 9.49825,
-          "min_ms": 8.609209000000002,
-          "peak_rss_mib": 6.0625,
-          "stddev_ms": 1.418458744813887,
+          "mean_ms": 810.6713336666666,
+          "median_ms": 811.502167,
+          "min_ms": 806.0083340000001,
+          "peak_rss_mib": 17.09375,
+          "stddev_ms": 4.3080940522140745,
           "tool": "rg"
         },
         {
-          "mean_ms": 84.61056660000003,
-          "median_ms": 84.4864585,
-          "min_ms": 83.136792,
-          "peak_rss_mib": 57.5,
-          "stddev_ms": 1.189234421743126,
+          "mean_ms": 11960.093555666666,
+          "median_ms": 12001.973708,
+          "min_ms": 11820.554,
+          "peak_rss_mib": 79.328125,
+          "stddev_ms": 124.02135665790944,
           "tool": "ferret"
         }
       ]
     },
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [],
       "pattern": "TODO",
       "timings": [
         {
-          "mean_ms": 10.9011875,
-          "median_ms": 10.854187500000002,
-          "min_ms": 10.171667000000001,
-          "peak_rss_mib": 6.046875,
-          "stddev_ms": 0.562113559548296,
+          "mean_ms": 820.2502913333335,
+          "median_ms": 819.039583,
+          "min_ms": 817.2609160000001,
+          "peak_rss_mib": 16.53125,
+          "stddev_ms": 3.744521488718208,
           "tool": "rg"
         },
         {
-          "mean_ms": 84.3789834,
-          "median_ms": 84.40610400000001,
-          "min_ms": 82.62525000000001,
-          "peak_rss_mib": 57.6328125,
-          "stddev_ms": 1.2965673448772495,
+          "mean_ms": 12147.739847333334,
+          "median_ms": 12177.183209,
+          "min_ms": 12075.511457999999,
+          "peak_rss_mib": 79.515625,
+          "stddev_ms": 62.90632068544161,
           "tool": "ferret"
         }
       ]
     },
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [
         "-F"
       ],
       "pattern": "struct file_operations",
       "timings": [
         {
-          "mean_ms": 9.737370899999998,
-          "median_ms": 9.48425,
-          "min_ms": 9.239292,
-          "peak_rss_mib": 6.0546875,
-          "stddev_ms": 0.7515797196274069,
+          "mean_ms": 862.6694583333334,
+          "median_ms": 839.959875,
+          "min_ms": 815.057,
+          "peak_rss_mib": 16.28125,
+          "stddev_ms": 62.16052166723436,
           "tool": "rg"
         },
         {
-          "mean_ms": 86.4332457,
-          "median_ms": 84.27460450000001,
-          "min_ms": 82.812625,
-          "peak_rss_mib": 57.3984375,
-          "stddev_ms": 4.2113484279241655,
+          "mean_ms": 12065.421667,
+          "median_ms": 12096.917083999999,
+          "min_ms": 11976.788583,
+          "peak_rss_mib": 79.328125,
+          "stddev_ms": 77.82190521170084,
           "tool": "ferret"
         }
       ]
     },
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [],
       "pattern": "[A-Z]{5}_[A-Z]{5}",
       "timings": [
         {
-          "mean_ms": 9.5639083,
-          "median_ms": 9.1204795,
-          "min_ms": 7.571916000000001,
-          "peak_rss_mib": 6.046875,
-          "stddev_ms": 1.4021019459882407,
+          "mean_ms": 874.9519306666666,
+          "median_ms": 875.5697920000001,
+          "min_ms": 861.011583,
+          "peak_rss_mib": 18.546875,
+          "stddev_ms": 13.64191496448762,
           "tool": "rg"
         },
         {
-          "mean_ms": 87.3601292,
-          "median_ms": 85.53393750000001,
-          "min_ms": 83.30187500000001,
-          "peak_rss_mib": 57.5078125,
-          "stddev_ms": 4.265943723594705,
+          "mean_ms": 12267.892902666666,
+          "median_ms": 12241.048541,
+          "min_ms": 12202.064792,
+          "peak_rss_mib": 79.5,
+          "stddev_ms": 82.58979063905606,
           "tool": "ferret"
         }
       ]
     },
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [
         "-i"
       ],
       "pattern": "hello",
       "timings": [
         {
-          "mean_ms": 10.403170600000001,
-          "median_ms": 10.3254375,
-          "min_ms": 9.877708,
-          "peak_rss_mib": 6.0625,
-          "stddev_ms": 0.4378495206512036,
+          "mean_ms": 839.756028,
+          "median_ms": 843.920834,
+          "min_ms": 822.705583,
+          "peak_rss_mib": 17.640625,
+          "stddev_ms": 15.396476482526491,
           "tool": "rg"
         },
         {
-          "mean_ms": 82.8157499,
-          "median_ms": 82.5255205,
-          "min_ms": 79.545459,
-          "peak_rss_mib": 57.4609375,
-          "stddev_ms": 2.5023482545605242,
+          "mean_ms": 12143.378750333333,
+          "median_ms": 12139.767417,
+          "min_ms": 12061.46075,
+          "peak_rss_mib": 79.546875,
+          "stddev_ms": 83.78206080218034,
           "tool": "ferret"
         }
       ]
     },
     {
-      "corpus": "linux",
+      "corpus": "dotnet-runtime",
       "flags": [],
       "pattern": "zzzznomatch",
       "timings": [
         {
-          "mean_ms": 9.8771041,
-          "median_ms": 9.723229,
-          "min_ms": 7.4244580000000004,
-          "peak_rss_mib": 5.9765625,
-          "stddev_ms": 1.5858824924624744,
+          "mean_ms": 822.2118473333334,
+          "median_ms": 829.5812920000001,
+          "min_ms": 798.948125,
+          "peak_rss_mib": 16.796875,
+          "stddev_ms": 20.592930267965688,
           "tool": "rg"
         },
         {
-          "mean_ms": 83.66901229999999,
-          "median_ms": 83.32020800000001,
-          "min_ms": 81.654083,
-          "peak_rss_mib": 57.53125,
-          "stddev_ms": 1.4944896534478513,
+          "mean_ms": 12135.148472333334,
+          "median_ms": 12139.817959,
+          "min_ms": 12056.637416,
+          "peak_rss_mib": 79.375,
+          "stddev_ms": 76.28357452015253,
           "tool": "ferret"
         }
       ]
     }
   ],
-  "runs": 10
+  "runs": 3
 }
