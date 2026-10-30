@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-10-30T06:22:29.6391080\u002B00:00",
+  "inputHash": "f0f8fec8",
+  "commit": "ce7d51d",
+  "dirty": true,
+  "datasets": {
+    "scifact": {
+      "queries": 300,
+      "ndcg10": 0.675,
+      "recall100": 0.909,
+      "mrr10": 0.637
+    },
+    "nfcorpus": {
+      "queries": 323,
+      "ndcg10": 0.322,
+      "recall100": 0.246,
+      "mrr10": 0.522
+    },
+    "fsharp-docs": {
+      "queries": 42,
+      "ndcg10": 0.834,
+      "recall100": 0.992,
+      "mrr10": 0.841,
+      "byType": {
+        "keyword": {
+          "queries": 20,
+          "ndcg10": 0.951,
+          "mrr10": 0.95
+        },
+        "question": {
+          "queries": 16,
+          "ndcg10": 0.656,
+          "mrr10": 0.685
+        },
+        "exact": {
+          "queries": 6,
+          "ndcg10": 0.917,
+          "mrr10": 0.889
+        }
+      }
+    }
+  }
+}

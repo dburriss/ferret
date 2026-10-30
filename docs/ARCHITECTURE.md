@@ -32,7 +32,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 | `Ferret.Index` | Build, load and invalidate the token index and corpus stats | no (ports) |
 | `Ferret.Search` | Orchestration: candidates, filter, rank, limit, excerpts | no (ports) |
 
-**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (minimal tokenizer: no stop words or stemming), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run, no index). **Planned:** `Index`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
+**Built:** `Domain`, `Ignore`, `Grep`, `FileSource`, `Text` (tokenizer, stop words, light suffix stemming; `NormaliserVersion`), `Bm25`, `Ranking` (the `Ranker` seam and `Ranking.bm25`), `Search` (per-run, no index). **Planned:** `Index`. **Future:** `Ferret.Semantic` (separate package), hybrid fusion, RRF.
 
 ### Ports
 
