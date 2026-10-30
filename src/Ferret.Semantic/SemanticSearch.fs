@@ -3,6 +3,8 @@ namespace Ferret.Semantic
 open System
 open System.Diagnostics
 open System.Numerics.Tensors
+open System.Threading
+open System.Threading.Tasks
 open Ferret.Domain
 open Ferret.FileSource
 
@@ -26,7 +28,8 @@ module SemanticSearch =
         if embedder.IsValueCreated then embedder.Value.Timings else EmbedTimings.Zero
 
     /// Tags `activity` with the tokenize and inference time and the tokens encoded since `before`. These
-    /// interleave per chunk, so they are totals on the phase rather than activities of their own.
+    /// interleave per chunk, so they are totals on the phase rather than activities of their own. With
+    /// parallel workers they are summed per-thread times, so they can exceed the phase's wall time.
     let private tagEmbedTimings (activity: Activity) (before: EmbedTimings) (embedder: Lazy<IEmbedder>) =
         let after = timingsOf embedder
         let ms (ticks: int64) = Math.Round(float ticks * 1000.0 / float Stopwatch.Frequency, 1)
@@ -40,19 +43,39 @@ module SemanticSearch =
     /// Excerpt lines shown per file, as for lexical search.
     let private maxExcerpts = 3
 
-    let private chunkFile (embedder: IEmbedder) (files: IFileSource) (path: string) : Chunk list option =
+    let private chunkFile (countTokens: string -> int) (files: IFileSource) (path: string) : Chunk list option =
         files.ReadLines path
         |> Option.map (fun lines ->
             let title = IO.Path.GetFileNameWithoutExtension path
-            Chunker.chunk title embedder.CountTokens maxTokens (String.concat "\n" lines))
+            Chunker.chunk title countTokens maxTokens (String.concat "\n" lines))
 
-    /// Embeds `texts` one at a time: with the int8 model a chunk's vector depends on its batch
-    /// companions, so single calls keep vectors deterministic and incremental indexing stable.
-    let private embedAll (embedder: IEmbedder) (progress: int -> int -> unit) (texts: string[]) : float32[][] =
-        texts
-        |> Array.mapi (fun i t ->
-            progress i texts.Length
-            (embedder.EmbedBatch [| t |])[0])
+    /// Worker count for parallel work: `FERRET_THREADS` if it is a positive integer, else the core count.
+    let private degreeOfParallelism () =
+        match Int32.TryParse(Environment.GetEnvironmentVariable "FERRET_THREADS") with
+        | true, n when n > 0 -> n
+        | _ -> Environment.ProcessorCount
+
+    /// Embeds `texts` one chunk per call: with the int8 model a chunk's vector depends on its batch
+    /// companions (dynamic quantisation), so singles keep vectors deterministic and incremental indexing
+    /// stable. Parallelism is across chunks, longest first so the stragglers are short; results are
+    /// written by original index, so the order is unchanged. `progress` gets 0 up front, then each
+    /// completed count, serialised and increasing.
+    let embedAll (embedder: IEmbedder) (progress: int -> int -> unit) (texts: string[]) : float32[][] =
+        let total = texts.Length
+        let results = Array.zeroCreate<float32[]> total
+        let order = Array.init total id |> Array.sortBy (fun i -> -texts[i].Length)
+        let completed = ref 0
+        let gate = obj ()
+        progress 0 total
+        Parallel.ForEach(
+            order,
+            ParallelOptions(MaxDegreeOfParallelism = degreeOfParallelism ()),
+            fun (i: int) ->
+                results[i] <- (embedder.EmbedBatch [| texts[i] |])[0]
+                lock gate (fun () -> progress (Interlocked.Increment &completed.contents) total)
+        )
+        |> ignore
+        results
 
     let private entryKey (path: string) = IO.Path.GetFullPath path
 
@@ -97,13 +120,20 @@ module SemanticSearch =
         let built =
             phase "ferret.index.build" (fun a ->
                 let before = timingsOf embedder
+                // The model loads on the first token count, so a warm index, or stale files that
+                // turn out unreadable (binary), never load it. `Lazy` is thread-safe.
+                let countTokens text = embedder.Value.CountTokens text
                 let chunked =
                     stale
-                    |> List.choose (fun (path, key, stamp) ->
-                        chunkFile embedder.Value files path
+                    |> Array.ofList
+                    |> Array.Parallel.map (fun (path, key, stamp) ->
+                        chunkFile countTokens files path
                         |> Option.map (fun chunks -> key, stamp.Value, Array.ofList chunks))
+                    |> Array.choose id
+                    |> List.ofArray
                 let texts = chunked |> List.collect (fun (_, _, cs) -> cs |> Array.map (fun c -> c.EmbedText) |> List.ofArray) |> Array.ofList
-                let vectors = embedAll embedder.Value progress texts
+                let embedStart = Stopwatch.GetTimestamp()
+                let vectors = if texts.Length = 0 then [||] else embedAll embedder.Value progress texts
                 let mutable offset = 0
                 let built =
                     chunked
@@ -118,6 +148,7 @@ module SemanticSearch =
                 tag a "files.built" built.Length
                 tag a "chunks" texts.Length
                 tagEmbedTimings a before embedder
+                tag a "embed.wall.ms" (Math.Round(float (Stopwatch.GetTimestamp() - embedStart) * 1000.0 / float Stopwatch.Frequency, 1))
                 built)
         let current = walked |> List.map (fun (_, key, _) -> key) |> Set.ofList
         let kept = prior |> Map.filter (fun key _ -> current.Contains key)

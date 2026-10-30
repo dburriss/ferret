@@ -3,6 +3,7 @@ module Ferret.Tests.SemanticTests
 open System
 open System.Diagnostics
 open System.IO
+open System.Threading
 open Xunit
 open Ferret.FileSource
 open Ferret.Semantic
@@ -112,16 +113,17 @@ let ``clear removes every index`` () =
 let private vocabulary = [| "cats"; "dogs"; "birds"; "fish"; "purr"; "bark"; "sing"; "swim" |]
 
 type private FakeEmbedder() =
-    member val Embedded = 0 with get, set
+    let mutable embedded = 0
+    member _.Embedded = Volatile.Read(&embedded)
 
     interface IEmbedder with
         member _.Dimension = 384
         member _.Timings = { TokenizeTicks = 10L; InferenceTicks = 20L; Tokens = 5 }
         member _.CountTokens t = (words t).Length
-        member this.EmbedBatch texts =
+        member _.EmbedBatch texts =
             texts
             |> Array.map (fun t ->
-                this.Embedded <- this.Embedded + 1
+                Interlocked.Increment(&embedded) |> ignore
                 let v = Array.zeroCreate<float32> 384
                 for w in words (t.ToLowerInvariant()) do
                     match Array.tryFindIndex ((=) (w.Trim('.', ','))) vocabulary with
@@ -227,3 +229,42 @@ let ``embedding phases carry the tokenize and inference breakdown`` () =
             for key in [ "tokenize.ms"; "inference.ms"; "tokens" ] do
                 Assert.NotNull(a.GetTagItem key)
         Assert.Equal("query", string ((phase "ferret.embed").GetTagItem "kind")))
+
+[<Fact>]
+let ``a warm build never loads the embedder`` () =
+    withCorpus corpus (fun root cache ->
+        let fake = new FakeEmbedder()
+        SemanticSearch.build cache (lazy (fake :> IEmbedder)) (fun _ _ -> ()) disk root |> ignore
+        let count = SemanticSearch.build cache (lazy (failwith "no embedder")) (fun _ _ -> ()) disk root
+        Assert.Equal(3, count))
+
+[<Fact>]
+let ``parallel embedding matches sequential single embedding in order, with serialised progress`` () =
+    let fake = new FakeEmbedder()
+    let texts = Array.init 200 (fun i -> String.replicate (1 + (i * 7) % 13) (if i % 2 = 0 then "cats purr " else "dogs bark ") + string i)
+    let sequential = texts |> Array.map (fun t -> (fake :> IEmbedder).EmbedBatch [| t |] |> Array.head)
+    let seen = ResizeArray<int>()
+    let parallel' = SemanticSearch.embedAll (fake :> IEmbedder) (fun n _ -> seen.Add n) texts
+    Assert.Equal<float32[][]>(sequential, parallel')
+    Assert.Equal<int>(List.init 201 id, List.ofSeq seen)
+
+/// The real int8 model, when one is configured or cached: parallel single-chunk embedding must be
+/// bit-identical to sequential, and tokenizing from many threads must agree with one thread.
+[<Fact>]
+let ``parallel onnx embedding is bit-identical to sequential`` () =
+    let dir =
+        match Environment.GetEnvironmentVariable "FERRET_MODEL_DIR" with
+        | null | "" -> Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".cache/ferret/models/bge-small-en-v1.5-int8")
+        | d -> d
+    let onnx = Path.Combine(dir, "model_quantized.onnx")
+    let vocab = Path.Combine(dir, "vocab.txt")
+    if File.Exists onnx && File.Exists vocab then
+        use embedder = OnnxEmbedder.FromFiles(onnx, vocab)
+        let e = embedder :> IEmbedder
+        let texts = Array.init 64 (fun i -> String.replicate (1 + (i * 5) % 17) "Tokenize the chunks, then embed them. " + string i)
+        let sequential = texts |> Array.map (fun t -> (e.EmbedBatch [| t |]).[0])
+        let par = SemanticSearch.embedAll e (fun _ _ -> ()) texts
+        Assert.Equal<float32[][]>(sequential, par)
+        let counts = texts |> Array.map e.CountTokens
+        let parCounts = texts |> Array.Parallel.map e.CountTokens
+        Assert.Equal<int[]>(counts, parCounts)
