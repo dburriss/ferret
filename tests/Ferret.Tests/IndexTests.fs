@@ -210,7 +210,7 @@ let ``indexed search emits its phases, and a warm run builds no files`` () =
     withTree [ "a.txt", "apple pie\n"; "b.txt", "apple tart\n"; "c.txt", "cherry\n" ] (fun root ->
         let store = MemoryIndexStore()
         let expected =
-            [ "ferret.index.load"; "ferret.walk"; "ferret.index.build"; "ferret.index.save"; "ferret.rank"; "ferret.excerpts" ]
+            [ "ferret.index.load"; "ferret.enumerate"; "ferret.stamp"; "ferret.index.build"; "ferret.index.save"; "ferret.rank"; "ferret.excerpts" ]
         let cold = withPhases (fun () -> indexed store root "apple" |> ignore)
         let warm = withPhases (fun () -> indexed store root "apple" |> ignore)
         Assert.Equal<string list>(expected, cold |> List.map _.OperationName)
@@ -225,7 +225,7 @@ let ``indexed search emits its phases, and a warm run builds no files`` () =
 let ``per-run search emits walk, read, rank and excerpts`` () =
     withTree [ "a.txt", "apple\n" ] (fun root ->
         let phases = withPhases (fun () -> perRun root "apple" |> ignore)
-        Assert.Equal<string list>([ "ferret.walk"; "ferret.read"; "ferret.rank"; "ferret.excerpts" ], phases |> List.map _.OperationName))
+        Assert.Equal<string list>([ "ferret.enumerate"; "ferret.read"; "ferret.rank"; "ferret.excerpts" ], phases |> List.map _.OperationName))
 
 [<Fact>]
 let ``a warm run saves nothing when a file cannot be read`` () =

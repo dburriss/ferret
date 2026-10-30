@@ -419,7 +419,7 @@ let ``lex timings leave stdout unchanged and write the phases to stderr`` () =
         Assert.Equal(plain, out)
         Assert.Equal("", plainErr)
         Assert.StartsWith("phase", err)
-        for name in [ "ferret.index.load"; "ferret.walk"; "ferret.index.build"; "ferret.rank"; "ferret.excerpts" ] do
+        for name in [ "ferret.index.load"; "ferret.enumerate"; "ferret.stamp"; "ferret.index.build"; "ferret.rank"; "ferret.excerpts" ] do
             Assert.Contains(name, err))
 
 [<Fact>]

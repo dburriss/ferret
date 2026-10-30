@@ -30,7 +30,7 @@ mise run bench [-- runs]   # builds Release, then runs hyperfine (default 10 run
 
 ### Profiling
 
-Before optimising the index build or a warm query, run with `--timings` to see where the time goes: `ferret --lex --timings <terms> <path>`. It prints one row per phase to stderr (`ferret.index.load`, `ferret.walk`, `ferret.index.build`, `ferret.rank`, `ferret.index.save`, `ferret.excerpts`; `--no-index` gives `ferret.walk`, `ferret.read`, `ferret.rank`, `ferret.excerpts`), with file counts as tags. A cold run (no index) shows the build cost; a warm run should show `files.built=0`, so its time is load, walk, rank and excerpts.
+Before optimising the index build or a warm query, run with `--timings` to see where the time goes: `ferret --lex --timings <terms> <path>`. It prints one row per phase to stderr (`ferret.index.load`, `ferret.enumerate`, `ferret.stamp`, `ferret.index.build`, `ferret.rank`, `ferret.index.save`, `ferret.excerpts`; `--no-index` gives `ferret.enumerate`, `ferret.read`, `ferret.rank`, `ferret.excerpts`), with file counts as tags. A cold run (no index) shows the build cost; a warm run should show `files.built=0`, so its time is load, walk, rank and excerpts.
 
 ## Relevance
 

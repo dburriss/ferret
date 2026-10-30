@@ -99,7 +99,7 @@ let search
     else
         let termSet = Set.ofList terms
         let paths =
-            phase "ferret.walk" (fun a ->
+            phase "ferret.enumerate" (fun a ->
                 let paths = roots |> Seq.collect files.Enumerate |> Seq.distinct |> List.ofSeq
                 tag a "files" paths.Length
                 paths)
@@ -171,14 +171,14 @@ let searchIndexed
                     Collections.Generic.Dictionary<string, Index.Entry>(s.Entries)
                 | None -> Collections.Generic.Dictionary<string, Index.Entry>())
         // Stamp first, then read: a file changed while being read then looks stale on the next run.
+        let paths =
+            phase "ferret.enumerate" (fun a ->
+                let paths = roots |> Seq.collect files.Enumerate |> Seq.distinct |> List.ofSeq
+                tag a "files" paths.Length
+                paths)
         let walked =
-            phase "ferret.walk" (fun a ->
-                let walked =
-                    roots
-                    |> Seq.collect files.Enumerate
-                    |> Seq.distinct
-                    |> Seq.map (fun path -> path, entryKey path, files.Stamp path)
-                    |> List.ofSeq
+            phase "ferret.stamp" (fun a ->
+                let walked = paths |> List.map (fun path -> path, entryKey path, files.Stamp path)
                 tag a "files" walked.Length
                 walked)
         let seen = Collections.Generic.HashSet<string>()
