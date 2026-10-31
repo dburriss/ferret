@@ -39,20 +39,6 @@ let private writeTimings (w: TextWriter) (phases: Activity seq) =
     for (name: string), ms, tags in rows do
         w.WriteLine $"{name.PadRight width}  {ms,8}  {tags}"
 
-/// Ferret's cache directory: where the lexical index, the semantic indexes and the model live.
-let private cacheDir () = Path.GetDirectoryName(DiskIndexStore.defaultPath ())
-
-/// Progress lines on stderr while embedding: the total up front, then every tenth for large jobs.
-let private embedProgress (err: TextWriter) : int -> int -> unit =
-    fun done' total ->
-        if done' = 0 then err.WriteLine $"ferret: embedding {total} chunks"
-        elif total >= 200 && done' % (total / 10) = 0 then err.WriteLine $"ferret: embedded {done'}/{total} chunks"
-
-let private semanticEmbedder (deps: AdapterDeps) =
-    lazy
-        (let source = Semantic.ModelLocator.resolve (fun m -> deps.Err.WriteLine $"ferret: {m}") (cacheDir ())
-         Semantic.ModelLocator.load source)
-
 /// Reports missing roots, runs `search` over the rest, prints the results and, with `--timings`, the
 /// phases. Returns the exit code: 0 on results, 1 on none, 2 on error.
 let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list -> ScoredDoc list) : int =
@@ -75,45 +61,25 @@ let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list 
     elif results.IsEmpty then 1
     else 0
 
-/// Ranked lexical search (`--lex`).
-let run (deps: AdapterDeps) (args: RankedArgs) : int =
+/// Runs a ranked search in `mode` through the facade.
+let private runMode (deps: AdapterDeps) (args: RankedArgs) (mode: SearchMode) : int =
     runWith deps args (fun searchRoots ->
-        if args.NoIndex then
-            Search.search Ranking.bm25 deps.Files searchRoots args.Query args.Limit
-        else
-            Search.searchIndexed deps.Index Ranking.bm25 deps.Files searchRoots args.Query args.Limit)
+        use ferret = AdapterDeps.client deps searchRoots (not args.NoIndex)
+        ferret.Search(args.Query, args.Limit, mode))
 
-/// Semantic ranking of the roots to depth `limit`: each root has its own index, and results merge by score.
-let private semanticArm (deps: AdapterDeps) (embedder: Lazy<Semantic.IEmbedder>) (args: RankedArgs) (limit: int) (searchRoots: string list) =
-    searchRoots
-    |> List.collect (fun root ->
-        Semantic.SemanticSearch.search (cacheDir ()) embedder (embedProgress deps.Err) deps.Files root args.Query limit)
-    |> Semantic.HybridSearch.mergeByScore limit
+/// Ranked lexical search (`--lex`).
+let run (deps: AdapterDeps) (args: RankedArgs) : int = runMode deps args Lexical
 
 /// Ranked semantic search (`--sem`).
-let runSemantic (deps: AdapterDeps) (args: RankedArgs) : int =
-    let embedder = semanticEmbedder deps
-    try
-        runWith deps args (semanticArm deps embedder args args.Limit)
-    finally
-        if embedder.IsValueCreated then embedder.Value.Dispose()
+let runSemantic (deps: AdapterDeps) (args: RankedArgs) : int = runMode deps args Semantic
 
 /// Ranked hybrid search (`--hybrid`): the BM25 and semantic top files fused with reciprocal rank fusion.
-let runHybrid (deps: AdapterDeps) (args: RankedArgs) : int =
-    let embedder = semanticEmbedder deps
-    let depth = Semantic.HybridSearch.ArmDepth
-    try
-        runWith deps args (fun searchRoots ->
-            let lexical = Search.searchIndexed deps.Index Ranking.bm25 deps.Files searchRoots args.Query depth
-            let semantic = semanticArm deps embedder args depth searchRoots
-            Semantic.HybridSearch.fuse Semantic.HybridSearch.DefaultK 1.0 1.0 args.Limit lexical semantic)
-    finally
-        if embedder.IsValueCreated then embedder.Value.Dispose()
+let runHybrid (deps: AdapterDeps) (args: RankedArgs) : int = runMode deps args Hybrid
 
 /// Downloads the semantic model into the cache so `--sem` can later run offline.
 let downloadModel (deps: AdapterDeps) : int =
-    let dir = Semantic.ModelLocator.modelDir (cacheDir ())
-    Semantic.ModelLocator.download (fun m -> deps.Err.WriteLine $"ferret: {m}") dir |> ignore
+    use ferret = AdapterDeps.client deps [] true
+    let dir = ferret.EnsureModel()
     deps.Out.WriteLine $"model ready in {dir}"
     deps.Out.Flush()
     0

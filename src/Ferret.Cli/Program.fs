@@ -122,9 +122,10 @@ let main argv =
                     let deps = AdapterDeps.create isDebug
                     max (MaintenanceCli.run deps cmd) (MaintenanceCli.runSemantic deps cmd)
                 | Ok cmd ->
-                    let code = MaintenanceCli.run (AdapterDeps.create isDebug) cmd
+                    let deps = AdapterDeps.create isDebug
+                    let code = MaintenanceCli.run deps cmd
                     // A bare --clean removes every index; with --index it rebuilds the lexical one only.
-                    if cmd.Clean && not cmd.Index then MaintenanceCli.clearSemantic ()
+                    if cmd.Clean && not cmd.Index then MaintenanceCli.clearSemantic deps
                     code
                 | Error message ->
                     eprintfn "ferret: %s" message

@@ -88,6 +88,16 @@ let private stdinIsReadable () =
         | None -> stdinIsReadableFallback ()
 
 module AdapterDeps =
+    /// A facade client over these adapters, searching `roots`. Status messages go to stderr.
+    let client (deps: AdapterDeps) (roots: string list) (useIndex: bool) : Ferret.FerretClient =
+        let options =
+            Ferret.FerretOptions(
+                Roots = Array.ofList roots,
+                UseIndex = useIndex,
+                Progress = Action<string>(fun m -> deps.Err.WriteLine $"ferret: {m}")
+            )
+        new Ferret.FerretClient(options, deps.Files, deps.Index)
+
     let create (isDebug: bool) : AdapterDeps =
         { Files = DiskFileSource()
           Index = Ferret.DiskIndexStore.DiskIndexStore(Ferret.DiskIndexStore.defaultPath ())

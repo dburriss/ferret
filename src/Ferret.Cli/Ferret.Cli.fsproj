@@ -3,10 +3,13 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.1.0</Version>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>ferret</ToolCommandName>
-    <PackageId>Ferret.Cli</PackageId>
+    <PackageId>Ferret.Tool</PackageId>
+    <Description>ferret: a ripgrep-compatible search command with ranked lexical (BM25), semantic and hybrid search.</Description>
+    <!-- Single-file publish bundles Argu, ONNX Runtime and reflection-based code, so trimming is unsafe. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <AssemblyName>ferret</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,10 +23,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Argu" Version="6.2.5" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Ferret\Ferret.fsproj" />
+    <!-- Ferret references these privately (they are bundled into its package), so they do not flow here. -->
     <ProjectReference Include="..\Ferret.Core\Ferret.Core.fsproj" />
     <ProjectReference Include="..\Ferret.Semantic\Ferret.Semantic.fsproj" />
   </ItemGroup>
