@@ -1,11 +1,15 @@
 // Runs Ferret's BM25 over fetched BEIR datasets and the F# docs set and prints nDCG@10, recall@100 and MRR@10.
 // Compares against benchmarks/relevance-baseline.json and exits 1 if nDCG@10 drops by more than the tolerance.
 // Build first: dotnet build -c Release src/Ferret
-// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity] [--ranker lex|sem]
+// Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity] [--ranker lex|sem|hybrid] [--rrf-k N] [--rrf-w LEX:SEM]
 //   no dataset: run all. --update: write the measured scores as the new baseline.
 //   --ranker sem: semantic search instead of BM25 (downloads the model on first use and embeds every document, so
 //   fsharp-docs takes about a minute and SciFact/NFCorpus much longer). It has its own baseline file
 //   (benchmarks/relevance-baseline-sem.json), skips the parity check and is not logged.
+//   --ranker hybrid: reciprocal rank fusion of both (HybridSearch, top 100 of each). Prints a table of BM25, semantic and
+//   RRF variants (k=60 with weights 1:1, 2:1, 1:2, plus k=20 as a sensitivity point) per dataset and per type. The
+//   scored variant (baseline, gate) is k=60 1:1 unless --rrf-k / --rrf-w pick another. Own baseline file
+//   (benchmarks/relevance-baseline-hybrid.json); not logged. Never writes a baseline without --update.
 // Every query also runs through the persisted-index path (Search.searchIndexed, in-memory store) and must give
 // exactly the same files, order, scores and excerpts as the per-run path; any difference exits 1.
 // --no-parity skips that and times only the per-run path. A saved and reloaded index must equal the in-memory one.
@@ -26,23 +30,46 @@ let root = Path.Combine(__SOURCE_DIRECTORY__, "..") |> Path.GetFullPath
 let args = fsi.CommandLineArgs |> Array.skip 1 |> List.ofArray
 let update = List.contains "--update" args
 
-let semantic =
-    match args |> List.tryFindIndex ((=) "--ranker") with
-    | Some i when i + 1 < args.Length && args[i + 1] = "sem" -> true
-    | Some i when i + 1 < args.Length && args[i + 1] = "lex" -> false
-    | Some _ -> failwith "--ranker takes lex or sem"
-    | None -> false
+let option (name: string) =
+    match args |> List.tryFindIndex ((=) name) with
+    | Some i when i + 1 < args.Length -> Some args[i + 1]
+    | Some _ -> failwith $"{name} takes a value"
+    | None -> None
+
+let ranker =
+    match option "--ranker" with
+    | Some "sem" -> "sem"
+    | Some "hybrid" -> "hybrid"
+    | Some "lex" | None -> "lex"
+    | Some _ -> failwith "--ranker takes lex, sem or hybrid"
+let semantic = ranker = "sem"
+let hybrid = ranker = "hybrid"
+
+// The variant a hybrid run scores and gates on.
+let primaryVariant =
+    let k = option "--rrf-k" |> Option.map int |> Option.defaultValue 60
+    match option "--rrf-w" with
+    | Some w ->
+        let p = w.Split ':'
+        k, float p[0], float p[1]
+    | None -> k, 1.0, 1.0
 
 let baselinePath =
-    Path.Combine(root, "benchmarks", if semantic then "relevance-baseline-sem.json" else "relevance-baseline.json")
+    let file =
+        match ranker with
+        | "sem" -> "relevance-baseline-sem.json"
+        | "hybrid" -> "relevance-baseline-hybrid.json"
+        | _ -> "relevance-baseline.json"
+    Path.Combine(root, "benchmarks", file)
 
-// Semantic results come from an index that is built once, so there is no per-run path to compare with.
-let parity = not semantic && not (List.contains "--no-parity" args)
+// Semantic and hybrid results come from an index that is built once, so there is no per-run path to compare with.
+let parity = ranker = "lex" && not (List.contains "--no-parity" args)
 
+let flagValues = [ "--ranker"; "--rrf-k"; "--rrf-w" ] |> List.choose option
 let requested =
     args
     |> List.filter (fun a -> a <> "--update" && a <> "--no-parity")
-    |> List.filter (fun a -> a <> "--ranker" && a <> "lex" && a <> "sem")
+    |> List.filter (fun a -> not (List.contains a [ "--ranker"; "--rrf-k"; "--rrf-w" ]) && not (List.contains a flagValues))
 let fullRun = requested.IsEmpty
 let names = if fullRun then [ "scifact"; "nfcorpus"; "fsharp-docs" ] else requested
 
@@ -137,8 +164,18 @@ let embedder =
 
 let ignore2 (_: int) (_: int) = ()
 
+// Hybrid arms per query text, so every RRF variant is computed without searching again.
+let arms = Collections.Generic.Dictionary<string, Domain.ScoredDoc list * Domain.ScoredDoc list>()
+
+let fused (k, wl, ws) (lex, sem) = Semantic.HybridSearch.fuse k wl ws 100 lex sem
+
 let rank (store: Index.MemoryIndexStore) (text: string) docs =
-    if semantic then
+    if hybrid then
+        let lex = Search.search Ranking.bm25 files [ docs ] text 100
+        let sem = Semantic.SemanticSearch.search cacheDir embedder ignore2 files docs text 100
+        arms[text] <- (lex, sem)
+        fused primaryVariant (lex, sem)
+    elif semantic then
         Semantic.SemanticSearch.search cacheDir embedder ignore2 files docs text 100
     else
         Search.search Ranking.bm25 files [ docs ] text 100
@@ -192,6 +229,27 @@ let evaluate name =
             kind, rows.Length, rows |> Array.averageBy (fun (_, (a, _, _)) -> a), rows |> Array.averageBy (fun (_, (_, _, c)) -> c) ]
     for kind, n, ndcg, mrr in kinds do
         printfn "  %-8s n=%-3d nDCG@10 %.3f  MRR@10 %.3f" kind n ndcg mrr
+    if hybrid then
+        // One row per ranker or variant: overall and per type nDCG@10 from the cached arms.
+        let variants =
+            [ "bm25", fst
+              "sem", snd
+              "rrf k=60 1:1", fused (60, 1.0, 1.0)
+              "rrf k=60 2:1", fused (60, 2.0, 1.0)
+              "rrf k=60 1:2", fused (60, 1.0, 2.0)
+              "rrf k=20 1:1", fused (20, 1.0, 1.0) ]
+        let kindNames = kinds |> List.map (fun (k, _, _, _) -> k)
+        printfn "  %-14s %8s %s" "variant" "nDCG@10" (kindNames |> List.map (sprintf "%9s") |> String.concat "")
+        for label, pick in variants do
+            let rows =
+                ds.queries
+                |> Array.choose (fun (id, text, kind) ->
+                    ds.qrels.TryFind id
+                    |> Option.map (fun rel ->
+                        let ranked = pick arms[text] |> List.map (fun d -> ds.docId d.File)
+                        kind, ndcgAt 10 ranked rel))
+            let byKind = kindNames |> List.map (fun k -> rows |> Array.filter (fst >> (=) k) |> Array.averageBy snd)
+            printfn "  %-14s %8.3f %s" label (rows |> Array.averageBy snd) (byKind |> List.map (sprintf "%9.3f") |> String.concat "")
     { ndcg = mean (fun (a, _, _) -> a); recall = mean (fun (_, b, _) -> b); mrr = mean (fun (_, _, c) -> c) }, scores.Length, kinds
 
 let baseline = readBaseline ()
@@ -287,7 +345,7 @@ if parityFailures.Count > 0 then
     exit 1
 
 // Partial runs are not logged: they would block the full run for the same inputs. Neither are semantic runs.
-if fullRun && not semantic then logRun ()
+if fullRun && ranker = "lex" then logRun ()
 
 if update then
     let merged = results |> List.fold (fun m (n, s, _, _) -> Map.add n s m) baseline

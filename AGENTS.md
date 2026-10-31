@@ -2,7 +2,7 @@
 
 ## Project
 
-- Ferret is a library plus a .NET tool/binary that supports lexical (BM25) and semantic search.
+- Ferret is a library plus a .NET tool/binary that supports lexical (BM25), semantic and hybrid search.
 - Design docs are in `docs/` 
 - Research findings live in `research/`.
 

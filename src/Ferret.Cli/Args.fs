@@ -16,6 +16,7 @@ type FerretArgs =
     | Clean
     | Lex
     | Sem
+    | Hybrid
     | Model of action: string
     | Limit of count: int
     | Scores
@@ -35,16 +36,17 @@ type FerretArgs =
             | Count -> "print the number of matching lines per file."
             | Word_Regexp -> "only match whole words."
             | Version -> "print the version."
-            | Index -> "build or update the persisted index without searching. With --sem, the semantic index. With --clean, rebuild it from scratch."
-            | Clean -> "delete the persisted indexes (lexical and semantic). With --index, rebuild it afterwards."
+            | Index -> "build or update the persisted index without searching. With --sem, the semantic index; with --hybrid, both. With --clean, rebuild it from scratch."
+            | Clean -> "delete the persisted indexes (lexical and semantic). With --index, rebuild it afterwards (with --hybrid, both)."
             | Lex -> "ranked lexical (BM25) search: the first positional is the query terms, not a regex."
             | Sem -> "ranked semantic (embedding) search: the first positional is the query. Downloads the model on first use and builds the index as needed."
+            | Hybrid -> "ranked hybrid search: BM25 and semantic rankings fused with reciprocal rank fusion. The first positional is the query. Needs the semantic model and index; opt-in."
             | Model _ -> "`download` fetches the semantic model into the cache so --sem can run offline. FERRET_MODEL_DIR points at an existing model."
-            | Limit _ -> "with --lex or --sem, the maximum number of files to return (default: 100)."
-            | Scores -> "with --lex or --sem, prefix each result line with its relevance score."
-            | Jsonl -> "with --lex or --sem, print one JSON object per result line (file, line, score, text)."
+            | Limit _ -> "with --lex, --sem or --hybrid, the maximum number of files to return (default: 100)."
+            | Scores -> "with --lex, --sem or --hybrid, prefix each result line with its relevance score."
+            | Jsonl -> "with --lex, --sem or --hybrid, print one JSON object per result line (file, line, score, text)."
             | No_Index -> "with --lex, ignore the persisted index and read every file."
-            | Timings -> "with --lex or --sem, print the time spent in each phase to stderr."
+            | Timings -> "with --lex, --sem or --hybrid, print the time spent in each phase to stderr."
             | Debug -> "print stack traces for unexpected errors."
 
 let private clusterable = set "inlcwF"

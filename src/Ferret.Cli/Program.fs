@@ -102,8 +102,8 @@ let main argv =
         | None ->
             match parsed with
             | VersionCmd() -> version ()
-            | _ when parsed.Contains Lex && parsed.Contains Sem ->
-                eprintfn "ferret: --lex and --sem cannot be used together"
+            | _ when [ parsed.Contains Lex; parsed.Contains Sem; parsed.Contains Hybrid ] |> List.filter id |> List.length > 1 ->
+                eprintfn "ferret: --lex, --sem and --hybrid cannot be used together"
                 2
             | _ when parsed.Contains Model ->
                 match parsed.GetResult Model with
@@ -117,6 +117,10 @@ let main argv =
             | _ when parsed.Contains Index || parsed.Contains Clean ->
                 match toMaintenanceArgs parsed afterSeparator with
                 | Ok cmd when parsed.Contains Sem -> MaintenanceCli.runSemantic (AdapterDeps.create isDebug) cmd
+                | Ok cmd when parsed.Contains Hybrid ->
+                    // Both indexes: the lexical one, then the semantic one.
+                    let deps = AdapterDeps.create isDebug
+                    max (MaintenanceCli.run deps cmd) (MaintenanceCli.runSemantic deps cmd)
                 | Ok cmd ->
                     let code = MaintenanceCli.run (AdapterDeps.create isDebug) cmd
                     // A bare --clean removes every index; with --index it rebuilds the lexical one only.
@@ -141,20 +145,30 @@ let main argv =
                     | Error message ->
                         eprintfn "ferret: %s" message
                         2
+            | _ when parsed.Contains Hybrid ->
+                if parsed.Contains No_Index then
+                    eprintfn "ferret: --no-index cannot be used with --hybrid"
+                    2
+                else
+                    match toRankedArgs "--hybrid" parsed afterSeparator with
+                    | Ok cmd -> RankedCli.runHybrid (AdapterDeps.create isDebug) cmd
+                    | Error message ->
+                        eprintfn "ferret: %s" message
+                        2
             | _ when parsed.Contains Limit ->
-                eprintfn "ferret: --limit requires --lex or --sem"
+                eprintfn "ferret: --limit requires --lex, --sem or --hybrid"
                 2
             | _ when parsed.Contains Scores ->
-                eprintfn "ferret: --scores requires --lex or --sem"
+                eprintfn "ferret: --scores requires --lex, --sem or --hybrid"
                 2
             | _ when parsed.Contains Jsonl ->
-                eprintfn "ferret: --jsonl requires --lex or --sem"
+                eprintfn "ferret: --jsonl requires --lex, --sem or --hybrid"
                 2
             | _ when parsed.Contains No_Index ->
-                eprintfn "ferret: --no-index requires --lex or --sem"
+                eprintfn "ferret: --no-index requires --lex, --sem or --hybrid"
                 2
             | _ when parsed.Contains Timings ->
-                eprintfn "ferret: --timings requires --lex or --sem"
+                eprintfn "ferret: --timings requires --lex, --sem or --hybrid"
                 2
             | _ ->
                 match toGrepArgs parsed afterSeparator with

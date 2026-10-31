@@ -84,3 +84,79 @@ let ``no field matches leaves the plain bm25 score`` () =
     let plain = Ranking.bm25 (query [ "x" ]) [ candidate "a" 10 [ "x", 2 ] ]
     let stats: Bm25.CorpusStats = { DocCount = 1; AvgLength = 10.0; DocFreq = Map.ofList [ "x", 1 ] }
     Assert.Equal(Bm25.score stats [ "x" ] (Map.ofList [ "x", 2 ]) 10, plain.Head.Score)
+
+// Reciprocal rank fusion.
+
+let private doc file excerpts : ScoredDoc =
+    { File = file
+      Score = 0.0
+      Excerpts = excerpts }
+
+let private hit path line text : Hit =
+    { Path = path
+      LineNumber = line
+      Line = text }
+
+let private ranked files = files |> List.map (fun f -> doc f [])
+
+[<Fact>]
+let ``fuse sums weight over k plus rank`` () =
+    let result = Ranking.fuse 60 [ 1.0, ranked [ "a"; "b" ]; 1.0, ranked [ "b"; "a" ] ]
+    Assert.Equal<string list>([ "a"; "b" ], result |> List.map _.File)
+    Assert.Equal(1.0 / 61.0 + 1.0 / 62.0, result.Head.Score, 12)
+
+[<Fact>]
+let ``fuse applies weights`` () =
+    let result = Ranking.fuse 60 [ 2.0, ranked [ "a" ]; 1.0, ranked [ "b" ] ]
+    Assert.Equal<string list>([ "a"; "b" ], result |> List.map _.File)
+    Assert.Equal(2.0 / 61.0, result.Head.Score, 12)
+
+[<Fact>]
+let ``fuse breaks ties by ordinal path`` () =
+    let result = Ranking.fuse 60 [ 1.0, ranked [ "b" ]; 1.0, ranked [ "a" ] ]
+    Assert.Equal<string list>([ "a"; "b" ], result |> List.map _.File)
+
+[<Fact>]
+let ``fuse takes excerpts from the first ranking that has any`` () =
+    let lexical = [ doc "a" [ hit "a" 1 "lex" ]; doc "b" [] ]
+    let semantic = [ doc "b" [ hit "b" 2 "sem" ]; doc "a" [ hit "a" 9 "sem" ]; doc "c" [ hit "c" 3 "sem" ] ]
+    let result = Ranking.fuse 60 [ 1.0, lexical; 1.0, semantic ] |> List.map (fun d -> d.File, d.Excerpts |> List.map _.Line) |> Map.ofList
+    Assert.Equal<string list>([ "lex" ], result["a"])
+    Assert.Equal<string list>([ "sem" ], result["b"])
+    Assert.Equal<string list>([ "sem" ], result["c"])
+
+[<Fact>]
+let ``fuse of nothing is empty`` () =
+    Assert.Empty(Ranking.fuse 60 [])
+    Assert.Empty(Ranking.fuse 60 [ 1.0, [] ])
+
+let private names (n: int) (seed: int) =
+    let rng = System.Random seed
+    [ 0..25 ] |> List.sortBy (fun _ -> rng.Next()) |> List.truncate (abs n % 12) |> List.map (fun i -> $"f{i:D2}")
+
+open FsCheck.Xunit
+
+[<Property>]
+let ``fuse is deterministic`` (n1: int) (s1: int) (n2: int) (s2: int) =
+    let rankings = [ 1.0, ranked (names n1 s1); 1.0, ranked (names n2 s2) ]
+    Ranking.fuse 60 rankings = Ranking.fuse 60 rankings
+    && Ranking.fuse 60 rankings = Ranking.fuse 60 (List.rev rankings)
+
+[<Property>]
+let ``a document in both rankings outranks the same document in one`` (n: int) (s: int) =
+    // Same position in both lists vs the same position in one list: the former always scores higher.
+    let both = names n s
+    both.IsEmpty
+    || (let target = both.Head
+        let others = [ for i in 0..30 -> $"z{i:D2}" ]
+        let one = Ranking.fuse 60 [ 1.0, ranked (target :: others); 1.0, ranked others ]
+        let two = Ranking.fuse 60 [ 1.0, ranked (target :: others); 1.0, ranked (target :: others) ]
+        let score docs = docs |> List.find (fun d -> d.File = target) |> _.Score
+        score two > score one)
+
+[<Property>]
+let ``a zero weight reduces fusion to the other ranker`` (n1: int) (s1: int) (n2: int) (s2: int) =
+    let a = names n1 s1
+    let b = names n2 s2
+    let fused = Ranking.fuse 60 [ 1.0, ranked a; 0.0, ranked b ] |> List.map _.File
+    fused = (Ranking.fuse 60 [ 1.0, ranked a ] |> List.map _.File)

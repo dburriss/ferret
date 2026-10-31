@@ -48,12 +48,20 @@ The F# docs queries are hand-written with graded labels (2 = canonical page, 1 =
 mise run eval:relevance                    # all datasets, about 2.5 min (SciFact is most of it)
 mise run eval:relevance -- fsharp-docs     # one dataset, about 1s
 mise run eval:relevance -- --update        # record the measured scores as the new baseline
+mise run eval:relevance -- fsharp-docs --ranker sem      # semantic (own baseline, not logged)
+mise run eval:relevance -- fsharp-docs --ranker hybrid   # RRF of BM25 and semantic; prints a variant table
 mise run eval:relevance -- --no-parity     # skip the index parity pass
 ```
 
 ### Index parity
 
 Unless `--no-parity` is given, every query also runs through the persisted-index path (`Search.searchIndexed`, in-memory store, so the first query builds and the rest reuse). Its results must equal the per-run results exactly: files, order, scores and excerpts. Any difference prints `PARITY` and exits 1, before a log is written or a baseline updated. After each dataset the index is also saved to disk and reloaded, and must equal the in-memory one. The nDCG gate is far too loose for this (0.01), which is why parity is exact. The run prints per-run and indexed times, so the speed-up shows up too (SciFact: about 177s vs 28s for 300 queries). The parity pass adds to the full run time.
+
+### Rankers
+
+`--ranker lex|sem|hybrid` picks what is scored (default `lex`). `sem` and `hybrid` embed every document (fsharp-docs about a minute the first time; SciFact and NFCorpus much longer), skip the index parity pass and are not logged. Baselines: `relevance-baseline.json` (lex), `relevance-baseline-sem.json` and `relevance-baseline-hybrid.json`.
+
+`hybrid` caches both rankings per query and prints a table of BM25, semantic and RRF variants (k = 60 with weights 1:1, 2:1 and 1:2, and k = 20), overall and per type. The row that is scored and gated is k = 60, 1:1, unless `--rrf-k N` and `--rrf-w LEX:SEM` choose another. Only `--update` writes a baseline.
 
 ### Baseline and regression gate
 

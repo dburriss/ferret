@@ -34,3 +34,24 @@ let bm25: Ranker =
                   Score = score
                   Excerpts = [] })
             |> List.ofArray
+
+/// Reciprocal rank fusion: `rrf(d) = Σ weight / (k + rank)` over the rankings that contain `d`, with
+/// 1-based ranks and no score normalisation. Each ranking is best-first with its weight. Equal scores
+/// sort by ordinal path; documents scoring 0 (only in zero-weight rankings) are dropped. A document's
+/// excerpts come from the first ranking that has any, so order rankings by preferred excerpt source.
+let fuse (k: int) (rankings: (float * ScoredDoc list) list) : ScoredDoc list =
+    let contributions =
+        rankings
+        |> List.collect (fun (weight, docs) ->
+            docs |> List.mapi (fun i doc -> doc.File, weight / float (k + i + 1), doc.Excerpts))
+    contributions
+    |> List.groupBy (fun (file, _, _) -> file)
+    |> List.map (fun (file, parts) ->
+        { File = file
+          Score = parts |> List.sumBy (fun (_, s, _) -> s)
+          Excerpts = parts |> List.tryPick (fun (_, _, e) -> if e.IsEmpty then None else Some e) |> Option.defaultValue [] })
+    |> List.filter (fun d -> d.Score > 0.0)
+    |> List.sortWith (fun a b ->
+        match compare b.Score a.Score with
+        | 0 -> String.CompareOrdinal(a.File, b.File)
+        | c -> c)

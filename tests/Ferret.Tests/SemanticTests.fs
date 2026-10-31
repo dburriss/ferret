@@ -5,6 +5,7 @@ open System.Diagnostics
 open System.IO
 open System.Threading
 open Xunit
+open Ferret
 open Ferret.FileSource
 open Ferret.Semantic
 
@@ -268,3 +269,43 @@ let ``parallel onnx embedding is bit-identical to sequential`` () =
         let counts = texts |> Array.map e.CountTokens
         let parCounts = texts |> Array.Parallel.map e.CountTokens
         Assert.Equal<int[]>(counts, parCounts)
+
+// HybridSearch: BM25 and the fake semantic ranker, fused.
+
+let private hybrid cache (fake: FakeEmbedder) root query limit =
+    let lexical = Search.search Ranking.bm25 disk [ root ] query HybridSearch.ArmDepth
+    let semantic = search cache fake root query HybridSearch.ArmDepth
+    HybridSearch.fuse HybridSearch.DefaultK 1.0 1.0 limit lexical semantic
+
+[<Fact>]
+let ``hybrid ranks a file both rankers like first`` () =
+    withCorpus corpus (fun root cache ->
+        let result = hybrid cache (new FakeEmbedder()) root "cats purr" 10
+        Assert.Equal(Path.Combine(root, "cats.md"), result.Head.File))
+
+[<Fact>]
+let ``hybrid includes files only the semantic ranker finds`` () =
+    withCorpus corpus (fun root cache ->
+        // "felines" matches no file lexically; the fake embedder still ranks all three files.
+        let result = hybrid cache (new FakeEmbedder()) root "felines" 10
+        Assert.Equal(3, result.Length))
+
+[<Fact>]
+let ``hybrid prefers lexical excerpts and falls back to the semantic chunk`` () =
+    withCorpus corpus (fun root cache ->
+        let result = hybrid cache (new FakeEmbedder()) root "cats purr" 10
+        let cats = result |> List.find (fun d -> d.File.EndsWith "cats.md")
+        Assert.All(cats.Excerpts, fun h -> Assert.Contains("cats", h.Line.ToLowerInvariant()))
+        let dogs = result |> List.find (fun d -> d.File.EndsWith "dogs.md")
+        Assert.NotEmpty dogs.Excerpts)
+
+[<Fact>]
+let ``hybrid limit caps the number of files`` () =
+    withCorpus corpus (fun root cache ->
+        Assert.Single(hybrid cache (new FakeEmbedder()) root "cats purr" 1) |> ignore)
+
+[<Fact>]
+let ``mergeByScore sorts by score then path and truncates`` () =
+    let d file score : Ferret.Domain.ScoredDoc = { File = file; Score = score; Excerpts = [] }
+    let result = HybridSearch.mergeByScore 2 [ d "b" 1.0; d "a" 1.0; d "c" 2.0 ]
+    Assert.Equal<string list>([ "c"; "a" ], result |> List.map _.File)

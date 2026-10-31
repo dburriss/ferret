@@ -83,19 +83,30 @@ let run (deps: AdapterDeps) (args: RankedArgs) : int =
         else
             Search.searchIndexed deps.Index Ranking.bm25 deps.Files searchRoots args.Query args.Limit)
 
-/// Ranked semantic search (`--sem`): each root has its own index, and results merge by score.
+/// Semantic ranking of the roots to depth `limit`: each root has its own index, and results merge by score.
+let private semanticArm (deps: AdapterDeps) (embedder: Lazy<Semantic.IEmbedder>) (args: RankedArgs) (limit: int) (searchRoots: string list) =
+    searchRoots
+    |> List.collect (fun root ->
+        Semantic.SemanticSearch.search (cacheDir ()) embedder (embedProgress deps.Err) deps.Files root args.Query limit)
+    |> Semantic.HybridSearch.mergeByScore limit
+
+/// Ranked semantic search (`--sem`).
 let runSemantic (deps: AdapterDeps) (args: RankedArgs) : int =
     let embedder = semanticEmbedder deps
     try
+        runWith deps args (semanticArm deps embedder args args.Limit)
+    finally
+        if embedder.IsValueCreated then embedder.Value.Dispose()
+
+/// Ranked hybrid search (`--hybrid`): the BM25 and semantic top files fused with reciprocal rank fusion.
+let runHybrid (deps: AdapterDeps) (args: RankedArgs) : int =
+    let embedder = semanticEmbedder deps
+    let depth = Semantic.HybridSearch.ArmDepth
+    try
         runWith deps args (fun searchRoots ->
-            searchRoots
-            |> List.collect (fun root ->
-                Semantic.SemanticSearch.search (cacheDir ()) embedder (embedProgress deps.Err) deps.Files root args.Query args.Limit)
-            |> List.sortWith (fun a b ->
-                match compare b.Score a.Score with
-                | 0 -> System.String.CompareOrdinal(a.File, b.File)
-                | c -> c)
-            |> List.truncate args.Limit)
+            let lexical = Search.searchIndexed deps.Index Ranking.bm25 deps.Files searchRoots args.Query depth
+            let semantic = semanticArm deps embedder args depth searchRoots
+            Semantic.HybridSearch.fuse Semantic.HybridSearch.DefaultK 1.0 1.0 args.Limit lexical semantic)
     finally
         if embedder.IsValueCreated then embedder.Value.Dispose()
 

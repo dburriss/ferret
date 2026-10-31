@@ -18,7 +18,7 @@ hide = true
 run = "dotnet build -c Release src/Ferret.Cli"
 
 [tasks."eval:relevance"]
-description = "nDCG/recall/MRR vs benchmarks/relevance-baseline.json (args: [scifact|nfcorpus|fsharp-docs] [--update] [--ranker lex|sem], default all)"
+description = "nDCG/recall/MRR vs benchmarks/relevance-baseline.json (args: [scifact|nfcorpus|fsharp-docs] [--update] [--ranker lex|sem|hybrid], default all)"
 depends = ["build:ferret"]
 run = "dotnet fsi scripts/eval-relevance.fsx"
 

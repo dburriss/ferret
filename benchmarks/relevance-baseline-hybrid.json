@@ -1,0 +1,17 @@
+{
+  "fsharp-docs": {
+    "ndcg10": 0.911,
+    "recall100": 1,
+    "mrr10": 0.939
+  },
+  "nfcorpus": {
+    "ndcg10": 0.365,
+    "recall100": 0.316,
+    "mrr10": 0.57
+  },
+  "scifact": {
+    "ndcg10": 0.718,
+    "recall100": 0.968,
+    "mrr10": 0.685
+  }
+}

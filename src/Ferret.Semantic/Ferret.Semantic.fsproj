@@ -15,6 +15,7 @@
     <Compile Include="ModelLocator.fs" />
     <Compile Include="VectorStore.fs" />
     <Compile Include="SemanticSearch.fs" />
+    <Compile Include="HybridSearch.fs" />
   </ItemGroup>
 
   <!-- Building with BundleModel=true embeds the int8 model and vocab from models/ (the two files the model download

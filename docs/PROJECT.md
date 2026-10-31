@@ -1,6 +1,6 @@
 # Ferret
 
-Ferret is a .NET library and CLI for searching text and markdown knowledge bases. It is a drop-in replacement for ripgrep that adds ranked lexical (BM25) search, with semantic and hybrid search planned.
+Ferret is a .NET library and CLI for searching text and markdown knowledge bases. It is a drop-in replacement for ripgrep that adds ranked lexical (BM25), semantic and hybrid search.
 
 Ferret is primarily a library for .NET developers, with the CLI as a thin front end over it. It is not trying to replace [ck](https://github.com/BeaconBay/ck), which is more full featured. It is a slight alternative with different search details (BM25 lexical arm, file-level rollup, bounded output) and a first-class .NET API.
 
@@ -56,7 +56,7 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 
 ### Ranked lexical search (BM25) — Partly built
 
-Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
+Opt-in, via a mode flag (`--lex`, `--sem` and `--hybrid`) on the default command. There are no subcommands, so plain `ferret <pattern>` is never shadowed. In a ranked mode the argument is terms, not a regex.
 
 - **Built:** `ferret --lex <terms> [path...] [--limit N] [--scores] [--jsonl]`. Reads files through a persisted index (see below; `--no-index` reads every file instead), over the same file walk and ignore rules as plain search. The tokenizer lowercases, splits on non-alphanumerics, drops stop words and applies light suffix stemming (`mock` matches `mocked`). Because stop words are dropped, a query that is only a stop word (`in`, `is`, `to`) returns nothing. Files are ranked with BM25 (OR semantics), ties break by path, `--limit` caps files (default 100), and each file shows up to 3 `path:line:text` lines containing a query term. `--scores` prefixes each line with `[score]` (4 decimals, e.g. `[2.4131] path:line:text`). `--jsonl` prints one JSON object per excerpt line (`file`, `line`, `score`, `text`) for agents. Regex-only flags (`-i`, `-F`, `-w`, `-l`, `-c`) are a usage error with `--lex`, and `--limit`, `--scores`, `--jsonl`, `--no-index` or `--timings` without `--lex` is a usage error.
 - **Built (timings):** `--timings` prints a table to stderr after the results (phase, ms, tags); stdout is unchanged. The library emits one `System.Diagnostics.Activity` per phase on the `Ferret` `ActivitySource` (no per-file spans, no OpenTelemetry packages; with no listener it costs nothing). Indexed phases: `ferret.index.load`, `ferret.enumerate` (list the files, applying ignore rules), `ferret.stamp` (one stat per file), `ferret.index.build` (read + tokenize new or changed files; tags `files.total`, `files.reused`, `files.built`), `ferret.rank`, `ferret.index.save` (`saved`, `entries`, `files.removed`), `ferret.excerpts`. With `--no-index`: `ferret.enumerate`, `ferret.read`, `ferret.rank`, `ferret.excerpts`. Semantic (`--sem`) runs emit `ferret.index.load`, `ferret.stamp`, `ferret.index.build`, `ferret.index.save`, `ferret.embed` (the query; tag `kind=query`), `ferret.rank` and `ferret.excerpts`. Tokenizing and inference interleave per chunk, so they are not activities of their own: `ferret.index.build` and `ferret.embed` carry the totals as tags `tokenize.ms`, `inference.ms` and `tokens`. The two do not sum to the phase time (file reads, chunking and pooling make up the rest).
@@ -103,11 +103,12 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 - `Ferret.Semantic` is a separate library package and does not bundle the model. The CLI always includes it and ships two ways: the default downloads the int8 model and vocab on first `--sem` use into `models/<model-id>/` under the cache dir (`FERRET_MODEL_DIR` overrides, `FERRET_OFFLINE=1` disables the download, `ferret --model download` pre-fetches); a bundled build (`-p:BundleModel=true`) embeds them and works offline.
 - One fixed model for now. Choosing or switching models (for example a larger or code-specialised one, with an index rebuild) might come later.
 
-### Hybrid search — Future
+### Hybrid search — Built (opt-in)
 
-- BM25 and semantic rankings fused with reciprocal rank fusion (`rrf(d) = Σ 1 / (k + rank)`, k = 60, optional per-ranker weights). No score normalisation is needed.
-- Each ranker contributes its top 50-100 before fusion.
-- Opt-in until an eval on real content shows hybrid beating BM25.
+- **Built:** `ferret --hybrid <terms> [path...] [--limit N] [--scores] [--jsonl] [--timings]`. BM25 and semantic file rankings are fused with reciprocal rank fusion (`rrf(d) = Σ weight / (k + rank)`, k = 60, weights 1:1 in the CLI; `Ranking.fuse` takes any weights). No score normalisation. Each ranker contributes its top 100 files before fusion (fixed, independent of `--limit`); the semantic arm is already rolled up to files with `max`. Ties break by ordinal path. Scores shown are RRF scores (small, about 0.03 at most).
+- Mutually exclusive with `--lex` and `--sem`. `--no-index` is a usage error, as for `--sem`. `--index --hybrid` builds both indexes and `--clean --hybrid` removes both. `--timings` shows both arms' phases plus `ferret.fuse` (tags `lexical`, `semantic`, `fused`).
+- Excerpts: the lexical matching lines when the file has them, otherwise the best semantic chunk's first lines.
+- Opt-in. See Open questions for the eval; `--lex` and `--sem` are unchanged.
 
 ## Non-goals
 
@@ -122,7 +123,7 @@ Opt-in, via a mode flag (`--lex`; `--sem` and `--hybrid` later) on the default c
 
 - Boost magnitudes need tuning on a real corpus.
 - Stemmer conservatism versus false matches.
-- Whether hybrid beats BM25 on real content. First semantic numbers on the F# docs (nDCG@10, BM25 vs `--sem`): overall 0.863 vs 0.884, keyword 0.963 vs 0.961, question 0.721 vs 0.744, exact 0.905 vs 1.000. The next experiment is RRF on the same queries and labels.
+- Whether hybrid beats BM25 on real content. First semantic numbers on the F# docs (nDCG@10, BM25 vs `--sem`): overall 0.863 vs 0.884, keyword 0.963 vs 0.961, question 0.721 vs 0.744, exact 0.905 vs 1.000. RRF (k = 60, 1:1) on the same queries and labels: overall 0.911, keyword 0.981, question 0.791, exact 1.000, so on this set hybrid beats both single rankers. Weights 2:1 and 1:2 and k = 20 scored 0.885, 0.896 and 0.913. It is 42 queries on one corpus, so it is evidence, not proof; see `benchmarks/README.md` for how to re-run.
 
 ## Related docs
 
