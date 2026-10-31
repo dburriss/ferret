@@ -1,0 +1,63 @@
+name: Publish NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'    # e.g., v0.1.0 or v0.1.0-alpha.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required to request the OIDC token for Trusted Publishing
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Determine version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # The tag is the version of record: it overrides <Version> in the project files.
+      - name: Pack
+        run: |
+          for project in src/Ferret/Ferret.fsproj src/Ferret.Cli/Ferret.Cli.fsproj; do
+            dotnet pack "$project" \
+              --configuration Release \
+              --no-restore \
+              --output ./artifacts \
+              -p:Version=${{ steps.version.outputs.version }}
+          done
+
+      # Exchanges the job's OIDC token for a short-lived (1 hour) nuget.org API key.
+      # Requires a Trusted Publishing policy on nuget.org for this repo + this workflow file name.
+      - name: NuGet login (OIDC to temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }} # nuget.org username (profile name), NOT your email address
+
+      - name: Publish to nuget.org
+        run: |
+          dotnet nuget push ./artifacts/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --skip-duplicate

@@ -1,0 +1,112 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'    # e.g., v0.1.0 or v0.1.0-alpha.1
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create GitHub Releases and upload assets
+
+jobs:
+  # Release notes come from CHANGELOG.md. A stable release has its own "## [x.y.z]" section;
+  # a prerelease leaves its entries under "## [Unreleased]", so fall back to that.
+  changelog:
+    runs-on: ubuntu-latest
+    outputs:
+      body: ${{ steps.extract.outputs.body }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract changelog section for tag
+        id: extract
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          section() {
+            awk -v h="$1" 'index($0, "## [" h "]") == 1 {found=1; next} found && /^## \[/ {exit} found {print}' CHANGELOG.md
+          }
+          BODY="$(section "$VERSION")"
+          if [ -z "$(echo "$BODY" | tr -d '[:space:]')" ]; then
+            BODY="$(section "Unreleased")"
+          fi
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "$BODY"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+  publish:
+    needs: [changelog, verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    rid: linux-x64,   ext: "",     smoke: true }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64, ext: "",     smoke: true }
+          - { os: macos-latest,     rid: osx-arm64,   ext: "",     smoke: true }
+          - { os: macos-latest,     rid: osx-x64,     ext: "",     smoke: false }   # cross-built on an arm64 runner
+          - { os: windows-latest,   rid: win-x64,     ext: ".exe", smoke: true }
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish self-contained binary
+        shell: bash
+        run: >
+          dotnet publish src/Ferret.Cli/Ferret.Cli.fsproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=false
+          -p:Version=${GITHUB_REF_NAME#v}
+          --output ./publish/${{ matrix.rid }}
+
+      - name: Smoke test
+        if: matrix.smoke
+        shell: bash
+        run: ./publish/${{ matrix.rid }}/ferret${{ matrix.ext }} --version
+
+      - name: Name the asset and write its checksum
+        shell: bash
+        run: |
+          cd ./publish/${{ matrix.rid }}
+          mv "ferret${{ matrix.ext }}" "ferret-${{ matrix.rid }}${{ matrix.ext }}"
+          shasum -a 256 "ferret-${{ matrix.rid }}${{ matrix.ext }}" > "ferret-${{ matrix.rid }}${{ matrix.ext }}.sha256"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: ${{ needs.changelog.outputs.body }}
+          files: |
+            ./publish/${{ matrix.rid }}/ferret-${{ matrix.rid }}*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
