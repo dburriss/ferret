@@ -2,9 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.1.0</Version>
-    <PackageId>Ferret.Semantic</PackageId>
-    <Description>Semantic (embedding) search for Ferret: ONNX embedder, chunker and ranker.</Description>
+    <IsPackable>false</IsPackable>
     <!-- scripts/eval-relevance.fsx references the built dll directly and needs the ONNX and tokenizer dlls beside it. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
@@ -31,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ferret\Ferret.fsproj" />
+    <ProjectReference Include="..\Ferret.Core\Ferret.Core.fsproj" />
   </ItemGroup>
 
 </Project>

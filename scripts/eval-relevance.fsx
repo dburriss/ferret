@@ -1,6 +1,6 @@
 // Runs Ferret's BM25 over fetched BEIR datasets and the F# docs set and prints nDCG@10, recall@100 and MRR@10.
 // Compares against benchmarks/relevance-baseline.json and exits 1 if nDCG@10 drops by more than the tolerance.
-// Build first: dotnet build -c Release src/Ferret
+// Build first: dotnet build -c Release src/Ferret.Semantic
 // Usage: dotnet fsi scripts/eval-relevance.fsx [scifact|nfcorpus|fsharp-docs ...] [--update] [--no-parity] [--ranker lex|sem|hybrid] [--rrf-k N] [--rrf-w LEX:SEM]
 //   no dataset: run all. --update: write the measured scores as the new baseline.
 //   --ranker sem: semantic search instead of BM25 (downloads the model on first use and embeds every document, so
@@ -13,7 +13,7 @@
 // Every query also runs through the persisted-index path (Search.searchIndexed, in-memory store) and must give
 // exactly the same files, order, scores and excerpts as the per-run path; any difference exits 1.
 // --no-parity skips that and times only the per-run path. A saved and reloaded index must equal the in-memory one.
-#r "../src/Ferret/bin/Release/net10.0/Ferret.dll"
+#r "../src/Ferret.Core/bin/Release/net10.0/Ferret.Core.dll"
 #r "../src/Ferret.Semantic/bin/Release/net10.0/Microsoft.ML.OnnxRuntime.dll"
 #r "../src/Ferret.Semantic/bin/Release/net10.0/Microsoft.ML.Tokenizers.dll"
 #r "../src/Ferret.Semantic/bin/Release/net10.0/Ferret.Semantic.dll"
@@ -284,8 +284,8 @@ let inputHash () =
     let under (dir: string) (pattern: string) =
         Directory.GetFiles(Path.Combine(root, dir), pattern, SearchOption.AllDirectories)
     let inputs =
-        [ yield! under "src/Ferret" "*.fs"
-          yield! under "src/Ferret" "*.fsproj"
+        [ yield! under "src/Ferret.Core" "*.fs"
+          yield! under "src/Ferret.Core" "*.fsproj"
           yield! under "tests/corpus/relevance" "*"
           for f in [ "eval-relevance.fsx"; "fetch-corpus.fsx"; "fetch-fsharp-docs.fsx" ] ->
               Path.Combine(root, "scripts", f) ]

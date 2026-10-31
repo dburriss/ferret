@@ -2,11 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.1.0</Version>
-    <PackageId>Ferret</PackageId>
+    <IsPackable>false</IsPackable>
     <!-- scripts/eval-relevance.fsx references the built dll directly and needs Flexi.Yaml beside it. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Description>Ripgrep-compatible search with ranked lexical and semantic search for text and markdown knowledge bases.</Description>
   </PropertyGroup>
 
   <ItemGroup>

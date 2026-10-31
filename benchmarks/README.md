@@ -75,7 +75,7 @@ A full run (no dataset argument) also writes `results/relevance-<hash>.json`, wi
 
 `<hash>` is the first 8 hex characters of a SHA-256 over everything that can change a score:
 
-- `src/Ferret/**/*.fs` and `*.fsproj`
+- `src/Ferret.Core/**/*.fs` and `*.fsproj`
 - `scripts/eval-relevance.fsx`, `fetch-corpus.fsx` and `fetch-fsharp-docs.fsx` (metrics, loaders and dataset pins)
 - `tests/corpus/relevance/**` (queries and labels)
 

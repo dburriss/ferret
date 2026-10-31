@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Ferret\Ferret.fsproj" />
+    <ProjectReference Include="..\..\src\Ferret.Core\Ferret.Core.fsproj" />
     <ProjectReference Include="..\..\src\Ferret.Semantic\Ferret.Semantic.fsproj" />
     <ProjectReference Include="..\..\src\Ferret.Cli\Ferret.Cli.fsproj" />
   </ItemGroup>
