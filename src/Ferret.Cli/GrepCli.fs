@@ -45,23 +45,36 @@ let run (deps: AdapterDeps) (args: GrepArgs) : int =
         let mutable matched = false
         let mutable failed = false
 
-        let search (path: string) (lines: seq<string>) =
-            let hits = Grep.matchLines regex lines
+        /// Writes the result for `path` from its matching lines, per the output mode.
+        let report (path: string) (hits: (int * string) list) =
             match args.Mode with
-            | ShowPaths ->
-                if Seq.isEmpty hits |> not then
-                    matched <- true
-                    Output.writePath deps.Out path
-            | ShowCounts ->
-                let count = Seq.length hits
-                if count > 0 then
-                    matched <- true
-                    Output.writeCount deps.Out withFilename path count
+            | ShowPaths -> Output.writePath deps.Out path
+            | ShowCounts -> Output.writeCount deps.Out withFilename path hits.Length
             | ShowLines ->
                 for number, line in hits do
+                    Output.writeHit deps.Out withFilename args.LineNumbers { Path = path; LineNumber = number; Line = line }
+
+        /// Writes the hits of `ferret.Grep` as they arrive. Hits come grouped by file, so `-l` and `-c`
+        /// buffer only the file being read (`-l` just its first hit).
+        let searchDisk (root: string) =
+            use ferret = AdapterDeps.client deps [ root ] true
+            let mutable current = null
+            let pending = ResizeArray<int * string>()
+            let flush () =
+                if pending.Count > 0 then
                     matched <- true
-                    Output.writeHit deps.Out withFilename args.LineNumbers
-                        { Path = path; LineNumber = number; Line = line }
+                    report current (List.ofSeq pending)
+                    pending.Clear()
+            for hit in ferret.Grep(args.Pattern, args.Options) do
+                if args.Mode = ShowLines then
+                    matched <- true
+                    Output.writeHit deps.Out withFilename args.LineNumbers hit
+                else
+                    if hit.Path <> current then
+                        flush ()
+                        current <- hit.Path
+                    if args.Mode = ShowCounts || pending.Count = 0 then pending.Add((hit.LineNumber, hit.Line))
+            flush ()
 
         let mutable stdinUsed = false
 
@@ -70,15 +83,15 @@ let run (deps: AdapterDeps) (args: GrepArgs) : int =
                 // stdin can only be read once
                 if not stdinUsed then
                     stdinUsed <- true
-                    search stdinName (deps.Files.ReadStdin())
+                    let hits = Grep.matchLines regex (deps.Files.ReadStdin()) |> List.ofSeq
+                    if not hits.IsEmpty then
+                        matched <- true
+                        report stdinName hits
             elif kind = Missing then
                 deps.Err.WriteLine $"ferret: {root}: No such file or directory (os error 2)"
                 failed <- true
             else
-                for path in deps.Files.Enumerate root do
-                    match deps.Files.ReadLines path with
-                    | None -> ()
-                    | Some lines -> search path lines
+                searchDisk root
 
         deps.Out.Flush()
         if failed then 2
