@@ -1,12 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <Version>0.1.0</Version>
-    <PackageReleaseNotes>`ferret` command: ripgrep-compatible plain search with `.gitignore` support, line numbers, counts, fixed strings, word matching and stdin.
-Ranked search with `--lex` (BM25, with boosts for path, heading and front-matter matches), plus `--limit`, `--scores`, `--jsonl` and `--timings`.
-Semantic search with `--sem` and hybrid search with `--hybrid` (BM25 and semantic rankings fused). The model downloads on first use; `--model download` fetches it ahead of time.
-A persisted index so repeated ranked searches only read new or changed files, with `--index` and `--clean` to build or remove it.
-`Ferret` library: a `FerretClient` for setting up, indexing and searching in lexical, semantic or hybrid mode from .NET code.</PackageReleaseNotes>
+    <Version>0.2.0</Version>
+    <PackageReleaseNotes>`FerretOptions.Offline` and `FerretOptions.IgnorePatterns`, library equivalents of `FERRET_OFFLINE` and the ignore rules, so a host process need not set environment variables or write ignore files.
+GitHub release assets are now archives (`ferret-&lt;rid&gt;.tar.gz`, `.zip` on Windows) holding the exe and the ONNX Runtime library it loads. A `ferret-bundled-&lt;rid&gt;` archive per platform embeds the semantic model and works offline.
+`--sem` and `--hybrid` crashed with `DllNotFoundException: onnxruntime` on the release binaries, because the library was left out of the upload.</PackageReleaseNotes>
     <!-- Flexi.Yaml needs at least this FSharp.Core; the SDK's implicit version is older. -->
     <FSharpCoreImplicitPackageVersion>10.1.403</FSharpCoreImplicitPackageVersion>
   </PropertyGroup>

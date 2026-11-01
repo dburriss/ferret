@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Added
 
 - `FerretOptions.Offline` and `FerretOptions.IgnorePatterns`, library equivalents of `FERRET_OFFLINE` and the ignore rules, so a host process need not set environment variables or write ignore files.
