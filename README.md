@@ -21,7 +21,9 @@ Two packages:
 
 ```sh
 dotnet tool install --global Ferret.Tool
+```
 
+```sh
 ferret "pattern" src            # like rg
 ferret --lex "query terms"      # ranked, BM25
 ferret --sem "a question"       # ranked, by meaning (downloads a small model on first use)
@@ -32,6 +34,10 @@ ferret --index --hybrid .       # build the indexes ahead of searching
 Flags that rank also take `--limit`, `--scores`, `--jsonl` and `--timings`. `ferret --model download` fetches the semantic model so `--sem` can run offline; `FERRET_MODEL_DIR` points at an existing copy.
 
 ## Library
+
+```sh
+dotnet add package Ferret
+```
 
 ```fsharp
 open Ferret
