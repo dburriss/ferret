@@ -1,0 +1,474 @@
+{
+  "hyperfine": "hyperfine 2.0.0",
+  "lex": [
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 262.32341660000003,
+          "median_ms": 261.91841600000004,
+          "min_ms": 258.842625,
+          "peak_rss_mib": 69.453125,
+          "stddev_ms": 3.2239049072913497,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 300.75284200000004,
+          "median_ms": 300.84733400000005,
+          "min_ms": 298.963417,
+          "peak_rss_mib": 74.21875,
+          "stddev_ms": 1.709939086327799,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 153.732833,
+          "median_ms": 154.405709,
+          "min_ms": 151.21283300000002,
+          "peak_rss_mib": 70.25,
+          "stddev_ms": 1.6518139161175138,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "async workflow",
+      "timings": [
+        {
+          "mean_ms": 241.6988166,
+          "median_ms": 242.228833,
+          "min_ms": 239.862875,
+          "peak_rss_mib": 69.34375,
+          "stddev_ms": 1.205783426629677,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 281.029358,
+          "median_ms": 281.61654200000004,
+          "min_ms": 278.822041,
+          "peak_rss_mib": 74.140625,
+          "stddev_ms": 1.904710172840216,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 136.15578320000003,
+          "median_ms": 135.726041,
+          "min_ms": 134.59745800000002,
+          "peak_rss_mib": 69.953125,
+          "stddev_ms": 1.408961063856168,
+          "tool": "index-warm"
+        }
+      ]
+    }
+  ],
+  "os": "macOS 26.7.1",
+  "results": [],
+  "runs": 5,
+  "semantic": [
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 2552989,
+      "mode": "--sem",
+      "phases": {
+        "build": [
+          {
+            "ms": 1.1,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 12.6,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7044.1,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=164 chunks=1637 tokenize.ms=3484.3 inference.ms=96416.7 tokens=364358 embed.wall.ms=6746.8"
+          },
+          {
+            "ms": 1.9,
+            "phase": "ferret.index.save",
+            "tags": "saved=True files.removed=0"
+          },
+          {
+            "ms": 0.9,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=0 inference.ms=0.9 tokens=4"
+          },
+          {
+            "ms": 4.7,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 9.3,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          }
+        ],
+        "warm": [
+          {
+            "ms": 2.4,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True"
+          },
+          {
+            "ms": 12.2,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 3,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=0 chunks=0 tokenize.ms=0 inference.ms=0 tokens=0 embed.wall.ms=0.1"
+          },
+          {
+            "ms": 0,
+            "phase": "ferret.index.save",
+            "tags": "saved=False files.removed=0"
+          },
+          {
+            "ms": 86.6,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=3.6 inference.ms=3.8 tokens=4"
+          },
+          {
+            "ms": 4.5,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 8.9,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          }
+        ]
+      },
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 7219.131431,
+          "median_ms": 7180.287084,
+          "min_ms": 7015.631375,
+          "peak_rss_mib": 878.15625,
+          "stddev_ms": 225.44618620780207,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65055.58033333334,
+          "median_ms": 65084.74429100001,
+          "min_ms": 64976.644375,
+          "peak_rss_mib": 383.984375,
+          "stddev_ms": 69.13274909602242,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 217.1012666,
+          "median_ms": 215.93383300000002,
+          "min_ms": 215.65,
+          "peak_rss_mib": 192.53125,
+          "stddev_ms": 2.100771854834622,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 159.94825,
+          "median_ms": 159.90579200000002,
+          "min_ms": 154.97108300000002,
+          "peak_rss_mib": 268.890625,
+          "stddev_ms": 3.7135119992503713,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 2552989,
+      "mode": "--sem",
+      "phases": null,
+      "query": "how do I handle errors in async code",
+      "timings": [
+        {
+          "mean_ms": 7560.754124666668,
+          "median_ms": 7586.671833,
+          "min_ms": 7379.8035,
+          "peak_rss_mib": 856.09375,
+          "stddev_ms": 169.4846030165085,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65074.71602766667,
+          "median_ms": 65068.707416,
+          "min_ms": 65003.13066699999,
+          "peak_rss_mib": 377.953125,
+          "stddev_ms": 74.77095632130374,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 217.0831584,
+          "median_ms": 217.877791,
+          "min_ms": 214.45170900000002,
+          "peak_rss_mib": 192.984375,
+          "stddev_ms": 1.7922633689157663,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 159.9809748,
+          "median_ms": 159.57975000000002,
+          "min_ms": 158.256958,
+          "peak_rss_mib": 268.859375,
+          "stddev_ms": 1.4124258890174362,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 3093414,
+      "mode": "--hybrid",
+      "phases": {
+        "build": [
+          {
+            "ms": 0.4,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 5.5,
+            "phase": "ferret.enumerate",
+            "tags": "files=170"
+          },
+          {
+            "ms": 8.5,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 153.8,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.reused=0 files.built=164"
+          },
+          {
+            "ms": 7.5,
+            "phase": "ferret.index.save",
+            "tags": "saved=True entries=164 files.removed=0"
+          },
+          {
+            "ms": 2.8,
+            "phase": "ferret.rank",
+            "tags": "candidates=164"
+          },
+          {
+            "ms": 33,
+            "phase": "ferret.excerpts",
+            "tags": "files=79"
+          },
+          {
+            "ms": 0.5,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 7,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7084.2,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=164 chunks=1637 tokenize.ms=3909.1 inference.ms=96193.3 tokens=364358 embed.wall.ms=6790.9"
+          },
+          {
+            "ms": 1.4,
+            "phase": "ferret.index.save",
+            "tags": "saved=True files.removed=0"
+          },
+          {
+            "ms": 0.9,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=0 inference.ms=0.9 tokens=4"
+          },
+          {
+            "ms": 4.8,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 8.5,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          },
+          {
+            "ms": 3.2,
+            "phase": "ferret.fuse",
+            "tags": "lexical=79 semantic=100 fused=100"
+          }
+        ],
+        "warm": [
+          {
+            "ms": 8.5,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True entries=164"
+          },
+          {
+            "ms": 5,
+            "phase": "ferret.enumerate",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7.3,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 2.6,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.reused=164 files.built=0"
+          },
+          {
+            "ms": 0.1,
+            "phase": "ferret.index.save",
+            "tags": "saved=False entries=164 files.removed=0"
+          },
+          {
+            "ms": 2.9,
+            "phase": "ferret.rank",
+            "tags": "candidates=164"
+          },
+          {
+            "ms": 35.7,
+            "phase": "ferret.excerpts",
+            "tags": "files=79"
+          },
+          {
+            "ms": 1.1,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True"
+          },
+          {
+            "ms": 6.7,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 3,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=0 chunks=0 tokenize.ms=0 inference.ms=0 tokens=0 embed.wall.ms=0.1"
+          },
+          {
+            "ms": 0,
+            "phase": "ferret.index.save",
+            "tags": "saved=False files.removed=0"
+          },
+          {
+            "ms": 89.1,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=4.1 inference.ms=3.9 tokens=4"
+          },
+          {
+            "ms": 4.9,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 9.8,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          },
+          {
+            "ms": 3,
+            "phase": "ferret.fuse",
+            "tags": "lexical=79 semantic=100 fused=100"
+          }
+        ]
+      },
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 7623.5225,
+          "median_ms": 7592.350042,
+          "min_ms": 7431.573958000001,
+          "peak_rss_mib": 869.421875,
+          "stddev_ms": 209.28323577712493,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65186.465902666656,
+          "median_ms": 65163.039042,
+          "min_ms": 65067.93279100001,
+          "peak_rss_mib": 364.890625,
+          "stddev_ms": 131.81720317727147,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 282.4631752,
+          "median_ms": 282.224792,
+          "min_ms": 281.320625,
+          "peak_rss_mib": 196.921875,
+          "stddev_ms": 0.92381568130808,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 167.21566640000003,
+          "median_ms": 167.175,
+          "min_ms": 165.00620800000002,
+          "peak_rss_mib": 269.234375,
+          "stddev_ms": 1.4968702381019132,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 3093414,
+      "mode": "--hybrid",
+      "phases": null,
+      "query": "how do I handle errors in async code",
+      "timings": [
+        {
+          "mean_ms": 7741.791916333334,
+          "median_ms": 7786.339208,
+          "min_ms": 7565.943291,
+          "peak_rss_mib": 876.921875,
+          "stddev_ms": 158.346519458281,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65388.66259733332,
+          "median_ms": 65522.9535,
+          "min_ms": 65025.284292,
+          "peak_rss_mib": 365.78125,
+          "stddev_ms": 318.2443066156227,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 270.22570840000003,
+          "median_ms": 270.252,
+          "min_ms": 266.670542,
+          "peak_rss_mib": 196.640625,
+          "stddev_ms": 2.90883957818549,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 169.47037500000002,
+          "median_ms": 168.595875,
+          "min_ms": 167.538875,
+          "peak_rss_mib": 269.234375,
+          "stddev_ms": 2.1489097108330313,
+          "tool": "ck index-warm"
+        }
+      ]
+    }
+  ]
+}
