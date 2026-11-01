@@ -59,8 +59,8 @@ module SemanticSearch =
     /// companions (dynamic quantisation), so singles keep vectors deterministic and incremental indexing
     /// stable. Parallelism is across chunks, longest first so the stragglers are short; results are
     /// written by original index, so the order is unchanged. `progress` gets 0 up front, then each
-    /// completed count, serialised and increasing.
-    let embedAll (embedder: IEmbedder) (progress: int -> int -> unit) (texts: string[]) : float32[][] =
+    /// completed count, serialised and increasing. Cancelling `ct` stops it with `OperationCanceledException`.
+    let embedAllWith (ct: CancellationToken) (embedder: IEmbedder) (progress: int -> int -> unit) (texts: string[]) : float32[][] =
         let total = texts.Length
         let results = Array.zeroCreate<float32[]> total
         let order = Array.init total id |> Array.sortBy (fun i -> -texts[i].Length)
@@ -69,7 +69,7 @@ module SemanticSearch =
         progress 0 total
         Parallel.ForEach(
             order,
-            ParallelOptions(MaxDegreeOfParallelism = degreeOfParallelism ()),
+            ParallelOptions(MaxDegreeOfParallelism = degreeOfParallelism (), CancellationToken = ct),
             fun (i: int) ->
                 results[i] <- (embedder.EmbedBatch [| texts[i] |])[0]
                 lock gate (fun () -> progress (Interlocked.Increment &completed.contents) total)
@@ -77,12 +77,17 @@ module SemanticSearch =
         |> ignore
         results
 
+    /// `embedAllWith` that cannot be cancelled.
+    let embedAll (embedder: IEmbedder) (progress: int -> int -> unit) (texts: string[]) : float32[][] =
+        embedAllWith CancellationToken.None embedder progress texts
+
     let private entryKey (path: string) = IO.Path.GetFullPath path
 
     /// Brings the index for `root` up to date and returns it with the walked paths: `(path, key)` for
     /// every indexed file. Files that are new or changed are chunked and embedded; entries for files
     /// that have gone are dropped. `embedder` is created only if there is something to embed or search.
     let private sync
+        (ct: CancellationToken)
         (cacheDir: string)
         (embedder: Lazy<IEmbedder>)
         (progress: int -> int -> unit)
@@ -124,16 +129,21 @@ module SemanticSearch =
                 // turn out unreadable (binary), never load it. `Lazy` is thread-safe.
                 let countTokens text = embedder.Value.CountTokens text
                 let chunked =
-                    stale
-                    |> Array.ofList
-                    |> Array.Parallel.map (fun (path, key, stamp) ->
-                        chunkFile countTokens files path
-                        |> Option.map (fun chunks -> key, stamp.Value, Array.ofList chunks))
-                    |> Array.choose id
-                    |> List.ofArray
+                    try
+                        stale
+                        |> Array.ofList
+                        |> Array.Parallel.map (fun (path, key, stamp) ->
+                            ct.ThrowIfCancellationRequested()
+                            chunkFile countTokens files path
+                            |> Option.map (fun chunks -> key, stamp.Value, Array.ofList chunks))
+                        |> Array.choose id
+                        |> List.ofArray
+                    with :? AggregateException as ae when ae.InnerExceptions |> Seq.forall (fun e -> e :? OperationCanceledException) ->
+                        // The parallel map wraps a cancellation thrown inside its body.
+                        raise (OperationCanceledException ct)
                 let texts = chunked |> List.collect (fun (_, _, cs) -> cs |> Array.map (fun c -> c.EmbedText) |> List.ofArray) |> Array.ofList
                 let embedStart = Stopwatch.GetTimestamp()
-                let vectors = if texts.Length = 0 then [||] else embedAll embedder.Value progress texts
+                let vectors = if texts.Length = 0 then [||] else embedAllWith ct embedder.Value progress texts
                 let mutable offset = 0
                 let built =
                     chunked
@@ -156,6 +166,8 @@ module SemanticSearch =
         // Entries for files that are gone, and for files that can no longer be read, are dropped.
         let gone = prior.Count - (prior |> Map.filter (fun k _ -> merged.ContainsKey k) |> Map.count)
         let snapshot = { ModelId = ModelLocator.ModelId; Dimension = dim; Files = merged }
+        // Nothing is written for a cancelled run, so the saved index stays as it was.
+        ct.ThrowIfCancellationRequested()
         phase "ferret.index.save" (fun a ->
             let save = not built.IsEmpty || gone > 0
             tag a "saved" save
@@ -164,15 +176,21 @@ module SemanticSearch =
         snapshot, walked |> List.filter (fun (_, key, _) -> merged.ContainsKey key) |> List.map (fun (p, k, _) -> p, k)
 
     /// Builds or updates the index for `root` without searching. Returns the number of files indexed.
-    let build
+    /// Cancelling `ct` stops it with `OperationCanceledException` and leaves the saved index as it was.
+    let buildWith
+        (ct: CancellationToken)
         (cacheDir: string)
         (embedder: Lazy<IEmbedder>)
         (progress: int -> int -> unit)
         (files: IFileSource)
         (root: string)
         : int =
-        let _, paths = sync cacheDir embedder progress files root
+        let _, paths = sync ct cacheDir embedder progress files root
         paths.Length
+
+    /// `buildWith` that cannot be cancelled.
+    let build (cacheDir: string) (embedder: Lazy<IEmbedder>) (progress: int -> int -> unit) (files: IFileSource) (root: string) : int =
+        buildWith CancellationToken.None cacheDir embedder progress files root
 
     /// The first lines of the chunk at `start..end`, up to `maxExcerpts`, skipping blank ones.
     let private excerpt (files: IFileSource) (path: string) (startLine: int) (endLine: int) : Hit list =
@@ -188,8 +206,10 @@ module SemanticSearch =
             |> Seq.map (fun (i, l) -> { Path = path; LineNumber = i + 1; Line = l })
             |> List.ofSeq
 
-    /// Ranks the files under `root` against `query`, best first, at most `limit`.
-    let search
+    /// Ranks the files under `root` against `query`, best first, at most `limit`. Cancelling `ct` stops
+    /// it with `OperationCanceledException` and leaves the saved index as it was.
+    let searchWith
+        (ct: CancellationToken)
         (cacheDir: string)
         (embedder: Lazy<IEmbedder>)
         (progress: int -> int -> unit)
@@ -201,7 +221,8 @@ module SemanticSearch =
         if String.IsNullOrWhiteSpace query then
             []
         else
-            let snapshot, paths = sync cacheDir embedder progress files root
+            let snapshot, paths = sync ct cacheDir embedder progress files root
+            ct.ThrowIfCancellationRequested()
             let q =
                 phase "ferret.embed" (fun a ->
                     let before = timingsOf embedder
@@ -236,3 +257,15 @@ module SemanticSearch =
                     { File = path
                       Score = score
                       Excerpts = excerpt files path chunk.StartLine chunk.EndLine }))
+
+    /// `searchWith` that cannot be cancelled.
+    let search
+        (cacheDir: string)
+        (embedder: Lazy<IEmbedder>)
+        (progress: int -> int -> unit)
+        (files: IFileSource)
+        (root: string)
+        (query: string)
+        (limit: int)
+        : ScoredDoc list =
+        searchWith CancellationToken.None cacheDir embedder progress files root query limit

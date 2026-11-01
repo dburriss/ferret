@@ -312,3 +312,27 @@ let ``mergeByScore sorts by score then path and truncates`` () =
     let d file score : Ferret.Domain.ScoredDoc = { File = file; Score = score; Excerpts = [] }
     let result = HybridSearch.mergeByScore 2 [ d "b" 1.0; d "a" 1.0; d "c" 2.0 ]
     Assert.Equal<string list>([ "c"; "a" ], result |> List.map _.File)
+
+[<Fact>]
+let ``a cancelled build writes no index`` () =
+    withCorpus corpus (fun root cache ->
+        let fake = new FakeEmbedder()
+        use source = new System.Threading.CancellationTokenSource()
+        // Cancel once the first chunk is embedded, part way through the build.
+        let progress done' _ = if done' = 1 then source.Cancel()
+        Assert.ThrowsAny<OperationCanceledException>(fun () ->
+            SemanticSearch.buildWith source.Token cache (lazy (fake :> IEmbedder)) progress disk root |> ignore)
+        |> ignore
+        Assert.False(File.Exists(VectorStore.pathFor cache root))
+        Assert.Equal(3, SemanticSearch.build cache (lazy (fake :> IEmbedder)) (fun _ _ -> ()) disk root))
+
+[<Fact>]
+let ``a cancelled search stops before embedding the query`` () =
+    withCorpus corpus (fun root cache ->
+        let fake = new FakeEmbedder()
+        use source = new System.Threading.CancellationTokenSource()
+        source.Cancel()
+        Assert.ThrowsAny<OperationCanceledException>(fun () ->
+            SemanticSearch.searchWith source.Token cache (lazy (fake :> IEmbedder)) (fun _ _ -> ()) disk root "cats" 10 |> ignore)
+        |> ignore
+        Assert.Equal(0, fake.Embedded))

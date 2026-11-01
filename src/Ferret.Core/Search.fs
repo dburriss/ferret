@@ -2,6 +2,7 @@ module Ferret.Search
 
 open System
 open System.Diagnostics
+open System.Threading
 open Ferret.Domain
 open Ferret.FileSource
 
@@ -84,9 +85,9 @@ let private rank
         tag a "files" top.Length
         top |> List.map (fun doc -> { doc with Excerpts = excerpts files termSet doc.File }))
 
-/// Ranks the files under `roots` against `query` with `ranker` and returns the best `limit`, each
-/// with excerpts of the lines that contain a query term. Reads every file on every call.
-let search
+/// `search`, abandoning the work with `OperationCanceledException` when `ct` is cancelled.
+let searchWith
+    (ct: CancellationToken)
     (ranker: Ranking.Ranker)
     (files: IFileSource)
     (roots: string list)
@@ -105,10 +106,20 @@ let search
                 paths)
         let candidates =
             phase "ferret.read" (fun a ->
-                let candidates = paths |> List.choose (readCandidate files termSet)
+                let candidates =
+                    paths
+                    |> List.choose (fun path ->
+                        ct.ThrowIfCancellationRequested()
+                        readCandidate files termSet path)
                 tag a "files" candidates.Length
                 candidates)
+        ct.ThrowIfCancellationRequested()
         rank ranker files query terms limit candidates
+
+/// Ranks the files under `roots` against `query` with `ranker` and returns the best `limit`, each
+/// with excerpts of the lines that contain a query term. Reads every file on every call.
+let search (ranker: Ranking.Ranker) (files: IFileSource) (roots: string list) (query: string) (limit: int) : ScoredDoc list =
+    searchWith CancellationToken.None ranker files roots query limit
 
 /// Everything about a file that does not depend on the query.
 let private buildEntry (files: IFileSource) (path: string) (stamp: string) : Index.Entry option =
@@ -151,6 +162,7 @@ let private isUnder (roots: (string * bool) list) (key: string) =
 /// `project path entry` for every indexed file. With `terms`, a store that can load per query gives
 /// entries trimmed to those terms, which is enough to project from.
 let private sync
+    (ct: CancellationToken)
     (store: Index.IIndexStore)
     (files: IFileSource)
     (roots: string list)
@@ -198,6 +210,7 @@ let private sync
             let projected =
                 walked
                 |> List.choose (fun (path, key, stamp) ->
+                    ct.ThrowIfCancellationRequested()
                     match entries.TryGetValue key with
                     | true, entry when stamp = Some entry.Stamp ->
                         seen.Add key |> ignore
@@ -224,6 +237,7 @@ let private sync
             tag a "files.reused" reused
             tag a "files.built" built
             projected)
+    ct.ThrowIfCancellationRequested()
     let searched =
         roots |> List.map (fun r -> entryKey (if r = "" then "." else r), files.Kind r = IsDirectory)
     let gone = entries.Keys |> Seq.filter (fun k -> not (seen.Contains k) && isUnder searched k) |> List.ofSeq
@@ -250,9 +264,10 @@ let private sync
                 | None -> ())
     projected
 
-/// Same results as `search`, but reads only files that are new or changed since the last run and
-/// keeps what it learned in `store` (see `sync`).
-let searchIndexed
+/// `searchIndexed`, abandoning the work with `OperationCanceledException` when `ct` is cancelled. A
+/// cancelled run does not touch the saved index.
+let searchIndexedWith
+    (ct: CancellationToken)
     (store: Index.IIndexStore)
     (ranker: Ranking.Ranker)
     (files: IFileSource)
@@ -265,10 +280,21 @@ let searchIndexed
         []
     else
         let termSet = Set.ofList terms
-        let candidates = sync store files roots (Some terms) (candidateOf terms termSet)
+        let candidates = sync ct store files roots (Some terms) (candidateOf terms termSet)
+        ct.ThrowIfCancellationRequested()
         rank ranker files query terms limit candidates
+
+/// Same results as `search`, but reads only files that are new or changed since the last run and
+/// keeps what it learned in `store` (see `sync`).
+let searchIndexed (store: Index.IIndexStore) (ranker: Ranking.Ranker) (files: IFileSource) (roots: string list) (query: string) (limit: int) : ScoredDoc list =
+    searchIndexedWith CancellationToken.None store ranker files roots query limit
 
 /// Builds or updates `store` for the files under `roots` without ranking anything, so a later
 /// `searchIndexed` finds a warm cache. Returns the number of files indexed.
 let buildIndex (store: Index.IIndexStore) (files: IFileSource) (roots: string list) : int =
-    sync store files roots None (fun _ _ -> ()) |> List.length
+    sync CancellationToken.None store files roots None (fun _ _ -> ()) |> List.length
+
+/// `buildIndex`, abandoning the work with `OperationCanceledException` when `ct` is cancelled. A
+/// cancelled run does not touch the saved index.
+let buildIndexWith (ct: CancellationToken) (store: Index.IIndexStore) (files: IFileSource) (roots: string list) : int =
+    sync ct store files roots None (fun _ _ -> ()) |> List.length
