@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `FerretOptions.ModelUrl` and `FERRET_MODEL_URL` to download the model from a mirror (checksums still verified).
 - `FerretClient.IsModelAvailable`, a non-throwing check so a host can decide when to download the model.
+- `CancellationToken` overloads of `FerretClient.Search` and `BuildIndex`, `SearchAsync` and `BuildIndexAsync`, and `EnsureModelAsync(ct)`. A cancelled run throws `OperationCanceledException` and leaves the saved indexes untouched; the model download is now asynchronous I/O and cancellable.
+- Ctrl+C during `--index`, `--lex`, `--sem`, `--hybrid` or `--model download` now stops cleanly (exit 130).
 
 ## [0.2.0] - 2026-11-01
 

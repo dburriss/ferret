@@ -10,15 +10,25 @@ Implements `IDisposable`. Reuse one instance across searches: it holds the loade
 |---|---|
 | `new FerretClient()` / `new FerretClient(FerretOptions)` | Create a client. |
 | `Search(query, limit, mode) : ScoredDoc list` | Rank files, best first, at most `limit` (≥ 1, else `ArgumentException`). |
+| `Search(query, limit, mode, ct)` / `Search(query, limit, ct)` | Same, cancellable. |
 | `Search(query, limit)` | Uses `DefaultMode`. |
 | `Search(query)` | `DefaultMode`, limit 10. |
 | `Grep(pattern, MatchOptions) : Hit seq` | Regex search like `rg`. Lazy. A bad pattern throws `ArgumentException`. |
 | `Grep(pattern)` | Case-sensitive regex. |
+| `SearchAsync(query, limit, mode, ct) : Task<ScoredDoc list>` / `SearchAsync(query, limit, ct)` | `Search` on a thread-pool thread. |
 | `BuildIndex(mode) : int` | Build or update the index; returns files indexed (for `Hybrid`, in the lexical index). |
+| `BuildIndex(mode, ct)` | Same, cancellable. |
+| `BuildIndexAsync(mode, ct) : Task<int>` / `BuildIndexAsync(ct)` | `BuildIndex` on a thread-pool thread. |
 | `EnsureModel() : string` | Make the model available; returns its directory, or `"bundled"`. |
-| `EnsureModelAsync() : Task<string>` | Same, without blocking. |
+| `EnsureModelAsync() : Task<string>` / `EnsureModelAsync(ct)` | Same, as asynchronous I/O. |
 
 A missing root throws `DirectoryNotFoundException`. A missing model throws `ModelUnavailable`.
+
+### Cancellation
+
+Cancelling the token stops the call with `OperationCanceledException` (a cancelled `Task` for the async members). A cancelled search or build writes nothing, so the saved indexes stay as they were; a cancelled model download leaves no partial file and throws `OperationCanceledException`, not `ModelUnavailable`.
+
+`SearchAsync` and `BuildIndexAsync` run the sync code on a thread-pool thread: they keep the caller free, but the work is CPU-bound and holds a pool thread until it ends or is cancelled. Only `EnsureModelAsync` is asynchronous I/O.
 
 ## FerretOptions
 
