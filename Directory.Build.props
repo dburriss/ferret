@@ -1,10 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <Version>0.2.0</Version>
-    <PackageReleaseNotes>`FerretOptions.Offline` and `FerretOptions.IgnorePatterns`, library equivalents of `FERRET_OFFLINE` and the ignore rules, so a host process need not set environment variables or write ignore files.
-GitHub release assets are now archives (`ferret-&lt;rid&gt;.tar.gz`, `.zip` on Windows) holding the exe and the ONNX Runtime library it loads. A `ferret-bundled-&lt;rid&gt;` archive per platform embeds the semantic model and works offline.
-`--sem` and `--hybrid` crashed with `DllNotFoundException: onnxruntime` on the release binaries, because the library was left out of the upload.</PackageReleaseNotes>
+    <Version>0.3.0</Version>
+    <PackageReleaseNotes>`FerretOptions.ModelUrl` and `FERRET_MODEL_URL` to download the model from a mirror (checksums still verified).
+`FerretClient.IsModelAvailable`, a non-throwing check so a host can decide when to download the model.
+`CancellationToken` overloads of `FerretClient.Search` and `BuildIndex`, `SearchAsync` and `BuildIndexAsync`, and `EnsureModelAsync(ct)`. A cancelled run throws `OperationCanceledException` and leaves the saved indexes untouched; the model download is now asynchronous I/O and cancellable.
+Ctrl+C during `--index`, `--lex`, `--sem`, `--hybrid` or `--model download` now stops cleanly (exit 130).</PackageReleaseNotes>
     <!-- Flexi.Yaml needs at least this FSharp.Core; the SDK's implicit version is older. -->
     <FSharpCoreImplicitPackageVersion>10.1.403</FSharpCoreImplicitPackageVersion>
   </PropertyGroup>

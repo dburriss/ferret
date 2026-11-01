@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
 ### Added
 
 - `FerretOptions.ModelUrl` and `FERRET_MODEL_URL` to download the model from a mirror (checksums still verified).
