@@ -46,6 +46,7 @@ Only `--sem` and `--hybrid` (library: `Semantic`, `Hybrid`) need it; lexical nev
 - **When it downloads:** on first semantic or hybrid use, or ahead of time with `ferret --model download` (library: `EnsureModel()`).
 - **Where it lands:** `models/<model-id>/` inside the cache dir: `$FERRET_CACHE_DIR`, else `$XDG_CACHE_HOME/ferret`, else `~/.cache/ferret` (`%LOCALAPPDATA%\ferret` on Windows). The CLI and library share it, so one download serves both.
 - **Use your own copy:** set `FERRET_MODEL_DIR` (library: `FerretOptions.ModelDir`) to a directory holding `model_quantized.onnx` and `vocab.txt`.
+- **Mirror:** set `FERRET_MODEL_URL` (library: `FerretOptions.ModelUrl`) to a base URL serving `onnx/model_quantized.onnx` and `vocab.txt`. Long-lived hosts: set `Offline = true` and call `EnsureModel()` at startup; `IsModelAvailable` checks without downloading.
 - **No network:** set `FERRET_OFFLINE=1`. A missing model is then an error naming the directory it looked in (library: `ModelUnavailable`). Full offline steps are in `references/cli.md`.
 
 ## Mistakes to avoid

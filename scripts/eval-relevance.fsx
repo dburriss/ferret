@@ -159,7 +159,7 @@ let cacheDir = Path.Combine(Path.GetTempPath(), "ferret-eval-sem")
 // Created once, and only for --ranker sem.
 let embedder =
     lazy
-        (Semantic.ModelLocator.resolve (eprintfn "%s") (Path.GetDirectoryName(DiskIndexStore.defaultPath ()))
+        (Semantic.ModelLocator.resolve None false (eprintfn "%s") (Path.GetDirectoryName(DiskIndexStore.defaultPath ()))
          |> Semantic.ModelLocator.load)
 
 let ignore2 (_: int) (_: int) = ()

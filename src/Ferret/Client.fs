@@ -12,7 +12,7 @@ open Ferret.Semantic
 type SearchMode =
     /// BM25 over the words in each file.
     | Lexical
-    /// Embedding similarity: finds files by meaning. Needs the model, which downloads on first use.
+    /// Embedding similarity: finds files by meaning. Needs the model: it downloads on first use unless `Offline` is set; see `IsModelAvailable` and `EnsureModel`.
     | Semantic
     /// BM25 and semantic rankings fused with reciprocal rank fusion.
     | Hybrid
@@ -34,6 +34,9 @@ type FerretOptions() =
     member val UseIndex: bool = true with get, set
     /// Never download the model; a missing model throws `ModelUnavailable`. `FERRET_OFFLINE=1` has the same effect.
     member val Offline: bool = false with get, set
+    /// Base URL to download the model from instead of Hugging Face; it must serve `onnx/model_quantized.onnx` and
+    /// `vocab.txt` (checksums are still verified). `FERRET_MODEL_URL` takes precedence. Default: Hugging Face.
+    member val ModelUrl: string = null with get, set
     /// Gitignore-style patterns applied to every root, after its ignore files, so they win ties and `!` re-includes.
     /// Ignored when a custom `IFileSource` is passed to the `FerretClient` constructor.
     member val IgnorePatterns: string[] = [||] with get, set
@@ -62,7 +65,7 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     let modelSource () =
         match options.ModelDir with
         | null
-        | "" -> ModelLocator.resolve options.Offline log cacheDir
+        | "" -> ModelLocator.resolve (Option.ofObj options.ModelUrl) options.Offline log cacheDir
         | dir ->
             let onnx, vocab = Path.Combine(dir, "model_quantized.onnx"), Path.Combine(dir, "vocab.txt")
             if File.Exists onnx && File.Exists vocab then
@@ -94,6 +97,14 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
         new FerretClient(options, DiskFileSource(List.ofArray (if isNull options.IgnorePatterns then [||] else options.IgnorePatterns)), Ferret.DiskIndexStore.DiskIndexStore(Path.Combine(cache, "lexical.idx")))
 
     new() = new FerretClient(FerretOptions())
+
+    /// True when the semantic model is already present (no download needed), so a host can decide whether to
+    /// call `EnsureModel`, search semantically, or fall back to lexical.
+    member _.IsModelAvailable : bool =
+        match options.ModelDir with
+        | null
+        | "" -> (ModelLocator.tryFind cacheDir).IsSome
+        | dir -> File.Exists(Path.Combine(dir, "model_quantized.onnx")) && File.Exists(Path.Combine(dir, "vocab.txt"))
 
     /// Makes sure the semantic model is available, downloading it if it is not, so later searches can run
     /// offline. Returns the directory it lives in (`"bundled"` when compiled in).

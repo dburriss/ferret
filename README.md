@@ -57,7 +57,7 @@ ferret --hybrid "query"         # both, fused
 ferret --index --hybrid .       # build the indexes ahead of searching
 ```
 
-Flags that rank also take `--limit`, `--scores`, `--jsonl` and `--timings`. `ferret --model download` fetches the semantic model so `--sem` can run offline; `FERRET_MODEL_DIR` points at an existing copy.
+Flags that rank also take `--limit`, `--scores`, `--jsonl` and `--timings`. `ferret --model download` fetches the semantic model so `--sem` can run offline; `FERRET_MODEL_DIR` points at an existing copy and `FERRET_MODEL_URL` at a download mirror.
 
 ## Library
 

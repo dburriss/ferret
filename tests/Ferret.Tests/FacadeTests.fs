@@ -121,3 +121,16 @@ let ``offline mode reports a missing model without downloading`` () =
         use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, Offline = true))
         let ex = Assert.Throws<Semantic.ModelUnavailable>(fun () -> ferret.EnsureModel() |> ignore)
         Assert.Contains("offline", ex.Data0))
+
+[<Fact>]
+let ``IsModelAvailable is false when the model is missing`` () =
+    withTree tree (fun root cache ->
+        use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, ModelDir = root))
+        Assert.False ferret.IsModelAvailable)
+
+[<Fact>]
+let ``a failed download names the model url`` () =
+    withTree tree (fun root cache ->
+        use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, ModelUrl = "http://127.0.0.1:1/m"))
+        let ex = Assert.Throws<Semantic.ModelUnavailable>(fun () -> ferret.EnsureModel() |> ignore)
+        Assert.Contains("http://127.0.0.1:1/m", ex.Data0))

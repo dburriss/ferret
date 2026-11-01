@@ -39,7 +39,7 @@ These apply to the library too (same cache and model).
 - `--index` builds only what the mode needs: plain/`--lex` the lexical index, `--sem` the semantic one, `--hybrid` **both**. One `ferret --index --hybrid .` is enough; no separate lexical and semantic runs.
 - Slow? Add `--timings` (stderr). Slow first run = `ferret.index.build`; slow semantic = `ferret.embed`.
 - Offline: while online run `ferret --model download`. It lands in `models/<model-id>/` inside the cache dir (`$FERRET_CACHE_DIR`, else `$XDG_CACHE_HOME/ferret`, else `~/.cache/ferret`; `%LOCALAPPDATA%\ferret` on Windows). Copy that directory to the offline machine, either into its cache dir or anywhere with `FERRET_MODEL_DIR` pointing at it (must hold `model_quantized.onnx` and `vocab.txt`), then `export FERRET_OFFLINE=1`. A missing model then errors with the directory it looked in. Lookup order: `FERRET_MODEL_DIR`, cache `models/<model-id>/`, bundled build, download.
-- Env vars: `FERRET_CACHE_DIR`, `FERRET_MODEL_DIR`, `FERRET_OFFLINE`, `FERRET_THREADS`.
+- Env vars: `FERRET_CACHE_DIR`, `FERRET_MODEL_DIR`, `FERRET_MODEL_URL` (download mirror), `FERRET_OFFLINE`, `FERRET_THREADS`.
 - Indexes are disposable. A same-size, same-mtime edit is not noticed by the lexical index; clean if results look stale.
 
 ## Excluding files
