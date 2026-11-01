@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub release assets are now archives (`ferret-<rid>.tar.gz`, `.zip` on Windows) holding the exe and the ONNX Runtime library it loads. A `ferret-bundled-<rid>` archive per platform embeds the semantic model and works offline.
+
+### Fixed
+
+- `--sem` and `--hybrid` crashed with `DllNotFoundException: onnxruntime` on the release binaries, because the library was left out of the upload.
+
 ## [0.1.0] - 2026-11-01
 
 ### Added

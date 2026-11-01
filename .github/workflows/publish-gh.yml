@@ -55,19 +55,31 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
+  # Each release has two archives per platform, both holding the exe plus the ONNX Runtime native library
+  # it loads from beside itself:
+  #   ferret-<rid>          downloads the semantic model on first --sem use
+  #   ferret-bundled-<rid>  embeds the model (-p:BundleModel=true), so it works offline
+  # The lean name must stay shorter than the bundled one: mise breaks asset ties by shortest name.
   publish:
     needs: [changelog, verify]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: ubuntu-latest,    rid: linux-x64,   ext: "",     smoke: true }
-          - { os: ubuntu-24.04-arm, rid: linux-arm64, ext: "",     smoke: true }
-          - { os: macos-latest,     rid: osx-arm64,   ext: "",     smoke: true }
-          - { os: macos-latest,     rid: osx-x64,     ext: "",     smoke: false }   # cross-built on an arm64 runner
-          - { os: windows-latest,   rid: win-x64,     ext: ".exe", smoke: true }
+        variant: [lean, bundled]
+        target:
+          - { os: ubuntu-latest,    rid: linux-x64,   ext: "",     archive: tar.gz, smoke: true }
+          - { os: ubuntu-24.04-arm, rid: linux-arm64, ext: "",     archive: tar.gz, smoke: true }
+          - { os: macos-latest,     rid: osx-arm64,   ext: "",     archive: tar.gz, smoke: true }
+          - { os: macos-latest,     rid: osx-x64,     ext: "",     archive: tar.gz, smoke: false }   # cross-built on an arm64 runner
+          - { os: windows-latest,   rid: win-x64,     ext: ".exe", archive: zip,    smoke: true }
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target.os }}
+
+    env:
+      # Keep in step with src/Ferret.Semantic/ModelLocator.fs.
+      MODEL_BASE_URL: https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/main
+      MODEL_ONNX_SHA256: 6c9c6101a956d62dfb5e7190c538226c0c5bb9cb27b651234b6df063ee7dbfe4
+      MODEL_VOCAB_SHA256: 07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3
 
     steps:
       - uses: actions/checkout@v5
@@ -77,33 +89,84 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # The model files are gitignored, so the bundled build fetches them into the folder the fsproj embeds from.
+      - name: Cache model
+        if: matrix.variant == 'bundled'
+        uses: actions/cache@v4
+        with:
+          path: src/Ferret.Semantic/models
+          key: model-${{ env.MODEL_ONNX_SHA256 }}-${{ env.MODEL_VOCAB_SHA256 }}
+
+      - name: Fetch model
+        if: matrix.variant == 'bundled'
+        shell: bash
+        run: |
+          dir=src/Ferret.Semantic/models
+          mkdir -p "$dir"
+          fetch() { # url file sha256
+            if [ -f "$dir/$2" ] && echo "$3  $dir/$2" | (sha256sum -c - 2>/dev/null || shasum -a 256 -c - 2>/dev/null) >/dev/null; then
+              return
+            fi
+            curl -fsSL --retry 3 -o "$dir/$2" "$1"
+            echo "$3  $dir/$2" | (sha256sum -c - 2>/dev/null || shasum -a 256 -c -)
+          }
+          fetch "$MODEL_BASE_URL/onnx/model_quantized.onnx" model_quantized.onnx "$MODEL_ONNX_SHA256"
+          fetch "$MODEL_BASE_URL/vocab.txt" vocab.txt "$MODEL_VOCAB_SHA256"
+
       - name: Publish self-contained binary
         shell: bash
         run: >
           dotnet publish src/Ferret.Cli/Ferret.Cli.fsproj
           --configuration Release
-          --runtime ${{ matrix.rid }}
+          --runtime ${{ matrix.target.rid }}
           --self-contained true
           -p:PublishSingleFile=true
           -p:PublishTrimmed=false
+          -p:BundleModel=${{ matrix.variant == 'bundled' }}
           -p:Version=${GITHUB_REF_NAME#v}
-          --output ./publish/${{ matrix.rid }}
+          --output ./publish/${{ matrix.variant }}-${{ matrix.target.rid }}
 
-      - name: Smoke test
-        if: matrix.smoke
-        shell: bash
-        run: ./publish/${{ matrix.rid }}/ferret${{ matrix.ext }} --version
-
-      - name: Name the asset and write its checksum
+      - name: Name the archive
+        id: name
         shell: bash
         run: |
-          cd ./publish/${{ matrix.rid }}
-          mv "ferret${{ matrix.ext }}" "ferret-${{ matrix.rid }}${{ matrix.ext }}"
-          asset="ferret-${{ matrix.rid }}${{ matrix.ext }}"
-          if command -v sha256sum >/dev/null; then
-            sha256sum "$asset" > "$asset.sha256"
+          if [ "${{ matrix.variant }}" = bundled ]; then base="ferret-bundled-${{ matrix.target.rid }}"; else base="ferret-${{ matrix.target.rid }}"; fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      # The exe and the native libraries it loads from beside itself go in one archive, flat at the root.
+      - name: Archive and write its checksum
+        shell: bash
+        run: |
+          cd ./publish/${{ matrix.variant }}-${{ matrix.target.rid }}
+          rm -f ./*.pdb
+          archive="../${{ steps.name.outputs.base }}.${{ matrix.target.archive }}"
+          if [ "${{ matrix.target.archive }}" = zip ]; then
+            7z a -tzip "$archive" ./* >/dev/null
           else
-            shasum -a 256 "$asset" > "$asset.sha256"
+            tar -czf "$archive" ./*
+          fi
+          cd ..
+          archive="${{ steps.name.outputs.base }}.${{ matrix.target.archive }}"
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$archive" > "$archive.sha256"
+          else
+            shasum -a 256 "$archive" > "$archive.sha256"
+          fi
+
+      # Run from the extracted archive in an empty directory, so a library missing from it shows up here.
+      - name: Smoke test
+        if: matrix.target.smoke
+        shell: bash
+        run: |
+          work="$(mktemp -d)"
+          archive="$PWD/publish/${{ steps.name.outputs.base }}.${{ matrix.target.archive }}"
+          cd "$work"
+          if [ "${{ matrix.target.archive }}" = zip ]; then 7z x "$archive" >/dev/null; else tar -xzf "$archive"; fi
+          ./ferret${{ matrix.target.ext }} --version
+          ls | grep -i onnxruntime
+          if [ "${{ matrix.variant }}" = bundled ]; then
+            FERRET_OFFLINE=1 FERRET_CACHE_DIR="$work/cache" \
+              ./ferret${{ matrix.target.ext }} --sem --limit 3 "keeping business rules consistent inside one transaction" "$GITHUB_WORKSPACE/tests/corpus/smoke/ddd"
           fi
 
       - name: Upload release asset
@@ -112,6 +175,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           body: ${{ needs.changelog.outputs.body }}
           files: |
-            ./publish/${{ matrix.rid }}/ferret-${{ matrix.rid }}*
+            ./publish/${{ steps.name.outputs.base }}.${{ matrix.target.archive }}
+            ./publish/${{ steps.name.outputs.base }}.${{ matrix.target.archive }}.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
