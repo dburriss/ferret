@@ -23,9 +23,31 @@ Two packages:
 
 ## Command
 
+With .NET:
+
 ```sh
 dotnet tool install --global Ferret.Tool
 ```
+
+With [mise](https://mise.jdx.dev), no .NET needed:
+
+```sh
+mise use -g github:dburriss/ferret
+```
+
+mise installs the release archive, which downloads the semantic model on first `--sem` use. For a build with the model embedded, so it works offline, ask for the `bundled` archive:
+
+```sh
+mise use -g 'github:dburriss/ferret[matching=bundled]'
+```
+
+```toml
+# mise.toml
+[tools]
+"github:dburriss/ferret" = { version = "latest", matching = "bundled" }
+```
+
+The archives are also on the [releases page](https://github.com/dburriss/ferret/releases) for manual download. Keep the archive contents together, since the exe loads the ONNX Runtime library from beside itself. The default pick needs mise 2026.4.22 or later.
 
 ```sh
 ferret "pattern" src            # like rg

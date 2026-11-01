@@ -30,6 +30,6 @@ Library: set `FerretOptions.ModelDir`.
 
 ## Use the bundled build
 
-A build made with `-p:BundleModel=true` embeds the model and needs no download.
+A build made with `-p:BundleModel=true` embeds the model and needs no download. Each GitHub release has one per platform, named `ferret-bundled-<rid>`. With mise, use `mise use -g 'github:dburriss/ferret[matching=bundled]'`.
 
 See [Environment variables and files](../reference/configuration.md) for the lookup order.
