@@ -51,6 +51,16 @@ for hit in ferret.Search("how do I install it", 10, Hybrid) do
 
 `FerretOptions` sets the roots, the cache directory, an existing model directory, the default mode (`Lexical`, `Semantic` or `Hybrid`) and a progress callback. The cache is shared with the `ferret` command.
 
+## Agent skill
+
+A skill teaches coding agents (Claude Code and others) how to use the `ferret` command and the library: which mode to pick, the ripgrep-compatible flags, `--jsonl` for feeding results to an agent, offline setup and the `FerretClient` API.
+
+```sh
+npx skills add dburriss/ferret
+```
+
+The skill is in [skills/ferret](skills/ferret).
+
 ## Documentation
 
 See [docs/index.md](docs/index.md): tutorials, how-to guides, reference and explanation.
