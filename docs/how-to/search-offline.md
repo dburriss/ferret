@@ -18,6 +18,8 @@ Lexical search never needs the network. Semantic and hybrid search need the mode
 
    A missing model is now an error that names the directory it looked in, instead of a download attempt.
 
+   Library: set `FerretOptions.Offline = true` instead of the environment variable, which suits a library running in someone else's process.
+
 ## Use a model you already have
 
 Put `model_quantized.onnx` and `vocab.txt` in a directory and point Ferret at it:

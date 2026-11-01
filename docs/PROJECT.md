@@ -77,6 +77,7 @@ Opt-in, via a mode flag (`--lex`, `--sem` and `--hybrid`) on the default command
 - Built: `.gitignore` (inside a git repository), `.ignore` and `.ferretignore`, per directory, deeper directories win, and within a directory `.ferretignore` overrides `.ignore` overrides `.gitignore`. Gitignore syntax including `!` re-includes. Ignored directories are not entered.
 - Ferret adds no excludes of its own beyond `rg`'s defaults (hidden, binary, symlinks).
 - The library matcher (`Ferret.Ignore`) accepts patterns and does no file I/O. For ranked search, ignored files are dropped before corpus stats are computed, so they never skew `df` or `avgdl`.
+- Library: `FerretOptions.IgnorePatterns`, a list of patterns the caller passes in, so the "no file I/O for ignore rules" principle holds. Also `FerretOptions.Offline`, the library form of `FERRET_OFFLINE`, so a hosted library need not rely on environment variables.
 - Planned: `--exclude`, `--no-ignore` and `--no-ferretignore` for per-run control, ignore files in parent directories, global gitignore and `.git/info/exclude`.
 
 ### Library
@@ -100,7 +101,7 @@ Opt-in, via a mode flag (`--lex`, `--sem` and `--hybrid`) on the default command
 - Chunker fixes needed first: merge heading-only and front-matter chunks, or prefix chunks with a title and section breadcrumb.
 - Behaves like lexical: `--sem` syncs the index on query, embedding only new or changed files, with progress on stderr. `--index --sem` pre-builds it.
 - One index file per search root, `semantic/<hash-of-root>.idx` under the cache dir, with vectors in a contiguous block. Load and rewrite cost is bounded by the searched tree, and projects never overwrite each other.
-- `Ferret.Semantic` is an internal project bundled into the `Ferret` package, and the model is not part of it. The CLI always includes it and ships two ways: the default downloads the int8 model and vocab on first `--sem` use into `models/<model-id>/` under the cache dir (`FERRET_MODEL_DIR` overrides, `FERRET_OFFLINE=1` disables the download, `ferret --model download` pre-fetches); a bundled build (`-p:BundleModel=true`) embeds them and works offline. Both ship as GitHub release archives per platform (`ferret-<rid>` and `ferret-bundled-<rid>`), each holding the exe and the ONNX Runtime library it loads from beside itself.
+- `Ferret.Semantic` is an internal project bundled into the `Ferret` package, and the model is not part of it. The CLI always includes it and ships two ways: the default downloads the int8 model and vocab on first `--sem` use into `models/<model-id>/` under the cache dir (`FERRET_MODEL_DIR` overrides, `FERRET_OFFLINE=1` disables the download (library: `FerretOptions.Offline`), `ferret --model download` pre-fetches); a bundled build (`-p:BundleModel=true`) embeds them and works offline. Both ship as GitHub release archives per platform (`ferret-<rid>` and `ferret-bundled-<rid>`), each holding the exe and the ONNX Runtime library it loads from beside itself.
 - One fixed model for now. Choosing or switching models (for example a larger or code-specialised one, with an index rebuild) might come later.
 
 ### Hybrid search — Built (opt-in)

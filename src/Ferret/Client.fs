@@ -32,6 +32,11 @@ type FerretOptions() =
     member val DefaultMode: SearchMode = Lexical with get, set
     /// Lexical search keeps a persisted index (true, the default) or reads every file on each search.
     member val UseIndex: bool = true with get, set
+    /// Never download the model; a missing model throws `ModelUnavailable`. `FERRET_OFFLINE=1` has the same effect.
+    member val Offline: bool = false with get, set
+    /// Gitignore-style patterns applied to every root, after its ignore files, so they win ties and `!` re-includes.
+    /// Ignored when a custom `IFileSource` is passed to the `FerretClient` constructor.
+    member val IgnorePatterns: string[] = [||] with get, set
     /// Receives status messages: model download and embedding progress. Default: none.
     member val Progress: Action<string> = null with get, set
 
@@ -57,7 +62,7 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     let modelSource () =
         match options.ModelDir with
         | null
-        | "" -> ModelLocator.resolve log cacheDir
+        | "" -> ModelLocator.resolve options.Offline log cacheDir
         | dir ->
             let onnx, vocab = Path.Combine(dir, "model_quantized.onnx"), Path.Combine(dir, "vocab.txt")
             if File.Exists onnx && File.Exists vocab then
@@ -86,7 +91,7 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
 
     new(options: FerretOptions) =
         let cache = if String.IsNullOrEmpty options.CacheDir then defaultCacheDir () else options.CacheDir
-        new FerretClient(options, DiskFileSource(), Ferret.DiskIndexStore.DiskIndexStore(Path.Combine(cache, "lexical.idx")))
+        new FerretClient(options, DiskFileSource(List.ofArray (if isNull options.IgnorePatterns then [||] else options.IgnorePatterns)), Ferret.DiskIndexStore.DiskIndexStore(Path.Combine(cache, "lexical.idx")))
 
     new() = new FerretClient(FerretOptions())
 

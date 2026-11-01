@@ -55,16 +55,16 @@ let private entries (dir: string) =
     with :? IOException | :? UnauthorizedAccessException ->
         [||]
 
-let rec private walk (useGitignore: bool) (dir: string) (rel: string) (display: string) (layers: Ignore.Rules list) =
+let rec private walk (useGitignore: bool) (extra: Ignore.Rules list) (dir: string) (rel: string) (display: string) (layers: Ignore.Rules list) =
     seq {
-        let layers = layers @ [ readRules dir rel useGitignore ]
+        let layers = layers @ [ readRules dir rel useGitignore ] @ (if rel = "" then extra else [])
         for e in entries dir do
             let childRel = if rel = "" then e.Name else rel + "/" + e.Name
             let isDir = e.Attributes.HasFlag FileAttributes.Directory
             if Ignore.check layers childRel isDir <> Ignore.Ignored then
                 let childDisplay = if display = "" then e.Name else display.TrimEnd '/' + "/" + e.Name
                 if isDir then
-                    yield! walk useGitignore e.FullName childRel childDisplay layers
+                    yield! walk useGitignore extra e.FullName childRel childDisplay layers
                 else
                     yield childDisplay
     }
@@ -72,7 +72,13 @@ let rec private walk (useGitignore: bool) (dir: string) (rel: string) (display: 
 /// Walks the disk like ripgrep: skips hidden files, symlinks and binary files, and honours
 /// `.gitignore` (inside a git repository), `.ignore` and `.ferretignore`. Ignored directories
 /// are not entered. Explicit file roots are searched regardless of ignore rules.
-type DiskFileSource() =
+/// `extraPatterns` are gitignore-style lines applied to each root after its own ignore files, so they win
+/// ties; ignore files in deeper directories still override them.
+type DiskFileSource(extraPatterns: string list) =
+    let extra = if List.isEmpty extraPatterns then [] else [ Ignore.compile "" extraPatterns ]
+
+    new() = DiskFileSource([])
+
     interface IFileSource with
         member _.Kind path =
             let p = real path
@@ -85,7 +91,7 @@ type DiskFileSource() =
             if File.Exists p then
                 Seq.singleton root
             elif Directory.Exists p then
-                walk (inGitRepo p) p "" root []
+                walk (inGitRepo p) extra p "" root []
             else
                 Seq.empty
 

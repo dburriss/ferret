@@ -16,7 +16,7 @@ type ModelSource =
 exception ModelUnavailable of string
 
 /// Finds the model, downloading it on first use. Order: `FERRET_MODEL_DIR`, the cache directory, the
-/// bundled resources, then a download into the cache (unless `FERRET_OFFLINE=1`).
+/// bundled resources, then a download into the cache (unless offline: `FERRET_OFFLINE=1` or `offline`).
 module ModelLocator =
 
     /// Identifies the model in the cache path and in the index, so a different model rebuilds the index.
@@ -74,15 +74,15 @@ module ModelLocator =
         (present dir).Value
 
     /// The model to use, downloading it if it is nowhere else. Fails with a hint when offline.
-    let resolve (progress: string -> unit) (cacheDir: string) : ModelSource =
+    let resolve (offline: bool) (progress: string -> unit) (cacheDir: string) : ModelSource =
         let configured = env "FERRET_MODEL_DIR" |> Option.bind present
         let cached = present (modelDir cacheDir)
         match configured, cached with
         | Some source, _
         | None, Some source -> source
         | None, None when OnnxEmbedder.HasBundledModel -> Bundled
-        | None, None when env "FERRET_OFFLINE" = Some "1" ->
-            raise (ModelUnavailable $"semantic model not found in {modelDir cacheDir} and FERRET_OFFLINE=1; run `ferret --model download` or set FERRET_MODEL_DIR")
+        | None, None when offline || env "FERRET_OFFLINE" = Some "1" ->
+            raise (ModelUnavailable $"semantic model not found in {modelDir cacheDir} and offline mode is on (FerretOptions.Offline or FERRET_OFFLINE=1); run `ferret --model download` or set FERRET_MODEL_DIR")
         | None, None ->
             try
                 download progress (modelDir cacheDir)

@@ -6,7 +6,7 @@
 |---|---|
 | `FERRET_CACHE_DIR` | Directory for indexes and the downloaded model. |
 | `FERRET_MODEL_DIR` | Directory holding `model_quantized.onnx` and `vocab.txt`. |
-| `FERRET_OFFLINE` | `1` disables the model download. |
+| `FERRET_OFFLINE` | `1` disables the model download. Library equivalent: `FerretOptions.Offline`. |
 | `FERRET_THREADS` | Worker count for semantic work. A positive integer; default is the core count. |
 
 ## Cache directory
@@ -34,4 +34,4 @@ The library and the `ferret` tool share this directory.
 
 ## Ignore files
 
-Read per directory: `.gitignore` (inside a git repository), `.ignore`, `.ferretignore`. Gitignore syntax, including `!`. Precedence within a directory: `.ferretignore` > `.ignore` > `.gitignore`. Deeper directories win.
+Read per directory: `.gitignore` (inside a git repository), `.ignore`, `.ferretignore`. Gitignore syntax, including `!`. Precedence within a directory: `.ferretignore` > `.ignore` > `.gitignore`. Deeper directories win. Library equivalent for extra patterns: `FerretOptions.IgnorePatterns`.

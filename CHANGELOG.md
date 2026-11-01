@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `FerretOptions.Offline` and `FerretOptions.IgnorePatterns`, library equivalents of `FERRET_OFFLINE` and the ignore rules, so a host process need not set environment variables or write ignore files.
+
 ### Changed
 
 - GitHub release assets are now archives (`ferret-<rid>.tar.gz`, `.zip` on Windows) holding the exe and the ONNX Runtime library it loads. A `ferret-bundled-<rid>` archive per platform embeds the semantic model and works offline.

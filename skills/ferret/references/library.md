@@ -28,6 +28,8 @@ Errors: missing root throws `DirectoryNotFoundException`; missing model throws `
 | `ModelDir` | `string` | `FERRET_MODEL_DIR`, else cache, else download |
 | `DefaultMode` | `SearchMode` | `Lexical` |
 | `UseIndex` | `bool` | `true` (lexical only) |
+| `Offline` | `bool` | `false`; never download the model (`FERRET_OFFLINE=1` also sets it) |
+| `IgnorePatterns` | `string[]` | none; gitignore-style, applied after each root's ignore files |
 | `Progress` | `Action<string>` | none |
 
 `ModelDir` must contain `model_quantized.onnx` and `vocab.txt`.

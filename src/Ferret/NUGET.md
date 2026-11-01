@@ -18,7 +18,7 @@ for doc in ferret.Search("how do I install it", 10, Hybrid) do
     printfn "%.3f %s" doc.Score doc.File
 ```
 
-`Search` takes `Lexical`, `Semantic` or `Hybrid`. Semantic and hybrid use a small local model that downloads on first use; `EnsureModel()` fetches it ahead of time. `BuildIndex` indexes ahead of the first search, and `Grep` does regex search like `rg`. `FerretOptions` sets the roots, cache directory, model directory, default mode and a progress callback.
+`Search` takes `Lexical`, `Semantic` or `Hybrid`. Semantic and hybrid use a small local model that downloads on first use; `EnsureModel()` fetches it ahead of time. `BuildIndex` indexes ahead of the first search, and `Grep` does regex search like `rg`. `FerretOptions` sets the roots, cache directory, model directory, default mode, offline mode, extra ignore patterns and a progress callback.
 
 The cache is shared with the `ferret` command ([Ferret.Tool](https://www.nuget.org/packages/Ferret.Tool)).
 

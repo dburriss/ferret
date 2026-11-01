@@ -67,6 +67,7 @@ Ignore rules (`Ferret.Ignore`, pure: it takes lines, never reads files):
 - Per directory, `.gitignore`, `.ignore` and `.ferretignore` are concatenated in that order, and the last matching rule wins, so `.ferretignore` can re-include with `!`. Deeper directories override shallower ones.
 - `.gitignore` is honoured only inside a git repository (a `.git` in the root or an ancestor), as in `rg`.
 - Syntax: `#` comments, `!`, leading `/` and inner `/` anchor, trailing `/` is directory-only, `*`, `?`, `[...]`, `**` (leading, middle, trailing), `\` escapes, trailing spaces trimmed.
+- The library accepts an optional list of extra patterns through `FerretOptions.IgnorePatterns`, passed to `DiskFileSource`. They are appended after the ignore files of the root, so they win ties, and the caller supplies them so `Ignore` stays free of file I/O.
 - `check` matches one path; `isIgnored` also checks its ancestors.
 - Hand-written (patterns compile to `Regex`) rather than `Microsoft.Extensions.FileSystemGlobbing`, which has only include/exclude (no `!` with last-match-wins), only `*` and `**`, no gitignore anchoring or directory-only rules, and walks the tree itself so it cannot prune.
 - Not yet: ignore files in parent directories of the root, global gitignore, `.git/info/exclude`, `--no-ignore`, `--hidden`, `--exclude`.

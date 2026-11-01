@@ -97,3 +97,27 @@ let ``grep rejects a bad pattern and a missing root`` () =
         Assert.ThrowsAny<ArgumentException>(fun () -> ferret.Grep "(" |> ignore) |> ignore
         use missing = client (Path.Combine(root, "nope")) cache
         Assert.Throws<DirectoryNotFoundException>(fun () -> missing.Grep "a" |> ignore) |> ignore)
+
+let private grepFiles (ferret: Ferret.FerretClient) =
+    ferret.Grep "a" |> Seq.map (fun h -> Path.GetFileName h.Path) |> Seq.distinct |> List.ofSeq
+
+[<Fact>]
+let ``ignore patterns exclude files from grep and search`` () =
+    withTree tree (fun root cache ->
+        use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, IgnorePatterns = [| "apple.txt" |]))
+        Assert.Equal<string list>([ "grape.txt" ], grepFiles ferret)
+        Assert.Empty(ferret.Search("apple", 10)))
+
+[<Fact>]
+let ``ignore patterns win over ignore files and can re-include`` () =
+    withTree [ ".ignore", "*.txt\n"; "apple.txt", "apple\n"; "grape.txt", "grape\n"; "plum.txt", "plum\n" ] (fun root cache ->
+        use ferret =
+            new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, IgnorePatterns = [| "!apple.txt"; "!plum.txt"; "plum.txt" |]))
+        Assert.Equal<string list>([ "apple.txt" ], grepFiles ferret))
+
+[<Fact>]
+let ``offline mode reports a missing model without downloading`` () =
+    withTree tree (fun root cache ->
+        use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, Offline = true))
+        let ex = Assert.Throws<Semantic.ModelUnavailable>(fun () -> ferret.EnsureModel() |> ignore)
+        Assert.Contains("offline", ex.Data0))

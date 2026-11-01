@@ -29,9 +29,17 @@ A missing root throws `DirectoryNotFoundException`. A missing model throws `Mode
 | `ModelDir` | `string` | `FERRET_MODEL_DIR`, else cache, else download |
 | `DefaultMode` | `SearchMode` | `Lexical` |
 | `UseIndex` | `bool` | `true` (lexical only) |
+| `Offline` | `bool` | `false`; `FERRET_OFFLINE=1` also sets it |
+| `IgnorePatterns` | `string[]` | none |
 | `Progress` | `Action<string>` | none |
 
 `ModelDir` must contain `model_quantized.onnx` and `vocab.txt`.
+
+`Offline` stops the client downloading the model. A missing model throws `ModelUnavailable` naming the directory it looked in.
+
+`IgnorePatterns` are gitignore-style lines, applied to every root on top of the ignore files found in the tree and with the same last-match-wins rule, so `!` re-includes work. The caller passes patterns in; the library reads no extra files for them.
+
+`IgnorePatterns` is ignored when you pass your own `IFileSource` to the `FerretClient` constructor.
 
 ## Types
 
