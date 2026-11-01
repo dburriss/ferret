@@ -99,7 +99,12 @@ jobs:
         run: |
           cd ./publish/${{ matrix.rid }}
           mv "ferret${{ matrix.ext }}" "ferret-${{ matrix.rid }}${{ matrix.ext }}"
-          shasum -a 256 "ferret-${{ matrix.rid }}${{ matrix.ext }}" > "ferret-${{ matrix.rid }}${{ matrix.ext }}.sha256"
+          asset="ferret-${{ matrix.rid }}${{ matrix.ext }}"
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$asset" > "$asset.sha256"
+          else
+            shasum -a 256 "$asset" > "$asset.sha256"
+          fi
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
