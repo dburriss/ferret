@@ -88,6 +88,19 @@ let private stdinIsReadable () =
         | None -> stdinIsReadableFallback ()
 
 module AdapterDeps =
+    /// Cancelled by Ctrl+C. The handler is installed on first use, so commands that never read this
+    /// (plain grep) keep the default Ctrl+C behaviour.
+    let private cancellation =
+        lazy
+            (let source = new System.Threading.CancellationTokenSource()
+             Console.CancelKeyPress.Add(fun e ->
+                 e.Cancel <- true
+                 source.Cancel())
+             source)
+
+    /// A token that is cancelled when the user presses Ctrl+C.
+    let cancelToken () : System.Threading.CancellationToken = cancellation.Value.Token
+
     /// A facade client over these adapters, searching `roots`. Status messages go to stderr.
     let client (deps: AdapterDeps) (roots: string list) (useIndex: bool) : Ferret.FerretClient =
         let options =

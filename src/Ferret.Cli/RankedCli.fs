@@ -65,7 +65,7 @@ let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list 
 let private runMode (deps: AdapterDeps) (args: RankedArgs) (mode: SearchMode) : int =
     runWith deps args (fun searchRoots ->
         use ferret = AdapterDeps.client deps searchRoots (not args.NoIndex)
-        ferret.Search(args.Query, args.Limit, mode))
+        ferret.Search(args.Query, args.Limit, mode, AdapterDeps.cancelToken ()))
 
 /// Ranked lexical search (`--lex`).
 let run (deps: AdapterDeps) (args: RankedArgs) : int = runMode deps args Lexical
@@ -79,7 +79,7 @@ let runHybrid (deps: AdapterDeps) (args: RankedArgs) : int = runMode deps args H
 /// Downloads the semantic model into the cache so `--sem` can later run offline.
 let downloadModel (deps: AdapterDeps) : int =
     use ferret = AdapterDeps.client deps [] true
-    let dir = ferret.EnsureModel()
+    let dir = ferret.EnsureModelAsync(AdapterDeps.cancelToken ()).GetAwaiter().GetResult()
     deps.Out.WriteLine $"model ready in {dir}"
     deps.Out.Flush()
     0

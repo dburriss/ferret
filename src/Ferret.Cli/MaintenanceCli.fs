@@ -21,7 +21,7 @@ let private runMode (mode: SearchMode) (deps: AdapterDeps) (args: MaintenanceArg
     else
         for root in missing do
             deps.Err.WriteLine $"ferret: {root}: No such file or directory (os error 2)"
-        let count = ferret.BuildIndex mode
+        let count = ferret.BuildIndex(mode, AdapterDeps.cancelToken ())
         deps.Out.WriteLine $"indexed {count} files"
         deps.Out.Flush()
         if missing.IsEmpty then 0 else 2

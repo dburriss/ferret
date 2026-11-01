@@ -181,6 +181,9 @@ let main argv =
     | :? ArguParseException as ex ->
         eprintfn "%s" ex.Message
         2
+    | :? OperationCanceledException ->
+        // Ctrl+C during indexing or a model download: the saved index is untouched.
+        130
     | Ferret.Semantic.ModelUnavailable message ->
         eprintfn "ferret: %s" message
         2
