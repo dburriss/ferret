@@ -13,7 +13,7 @@ Status markers match PROJECT.md: **Built**, **Planned** (designed, not built), *
 
 - **Pure core, effects at the edge.** Scoring, tokenising, ranking and rollup are pure functions. File system, cache and model I/O sit behind interfaces supplied by the caller.
 - **One engine, many front ends.** The CLI, Eru's MCP server and embedding apps all call the same search API.
-- **Lexical stays small.** Semantic search is a separate package so library users who only want lexical search avoid the ~80 MB model and ONNX Runtime. The CLI includes it, as a downloading build and a bundled build.
+- **Lexical stays small.** Semantic search is a separate package so library users who only want lexical search avoid the 32 MB model and ONNX Runtime (17–43 MB per platform). The CLI includes it, as a downloading build and a bundled build.
 - **Indexes are disposable.** Everything under the cache can be deleted and rebuilt lazily.
 
 ## Library: `Ferret`

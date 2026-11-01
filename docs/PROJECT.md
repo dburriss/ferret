@@ -32,7 +32,7 @@ Unranked OR-matching with unbounded output wastes context and buries the answer.
 
 - Must not break muscle memory: plain `ferret <pattern>` behaves like `rg`.
 - Must work offline, with no service to run.
-- Library users who only want lexical search must not pull in the semantic ranker. It adds ONNX Runtime and a model (about 80 MB per platform), so `Ferret.Semantic` is a separate package. The CLI includes it, in two distributions: one downloads the model on first use, one bundles it.
+- Library users who only want lexical search must not pull in the semantic ranker. It adds ONNX Runtime (about 17–43 MB per platform) and a 32 MB model, so `Ferret.Semantic` is a separate package. The CLI includes it, in two distributions: one downloads the model on first use, one bundles it.
 - Indexes are disposable caches that rebuild lazily.
 
 ## Target users
