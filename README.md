@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/ferret-logo.svg" alt="Ferret" width="360">
+</p>
+
 # Ferret
 
 Search files by keyword, meaning or both. Ferret is a drop-in `rg` for plain searches, and adds ranked lexical (BM25), semantic and hybrid search with a persisted index.
