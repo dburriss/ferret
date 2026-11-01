@@ -32,13 +32,24 @@ let ``a lexical search finds the file with the term`` () =
     withTree tree (fun root cache ->
         use ferret = client root cache
         let hits = ferret.Search("apple", 10)
-        Assert.Equal<string list>([ Path.Combine(root, "apple.txt") ], hits |> List.map _.File))
+        Assert.Equal<string list>([ Path.Combine(root, "apple.txt") ], hits.Docs |> Array.map _.File |> List.ofArray)
+        Assert.False hits.Truncated)
 
 [<Fact>]
 let ``the limit caps the results`` () =
     withTree [ "a.txt", "apple\n"; "b.txt", "apple apple\n" ] (fun root cache ->
         use ferret = client root cache
-        Assert.Single(ferret.Search("apple", 1)) |> ignore)
+        let result = ferret.Search("apple", 1)
+        Assert.Single result.Docs |> ignore
+        Assert.True result.Truncated)
+
+[<Fact>]
+let ``a limit equal to the match count is not truncated`` () =
+    withTree [ "a.txt", "apple\n"; "b.txt", "apple apple\n" ] (fun root cache ->
+        use ferret = client root cache
+        let result = ferret.Search("apple", 2)
+        Assert.Equal(2, result.Docs.Length)
+        Assert.False result.Truncated)
 
 [<Fact>]
 let ``building the index creates the lexical index file and cleaning removes it`` () =
@@ -54,13 +65,13 @@ let ``search without an index gives the same results as with one`` () =
     withTree tree (fun root cache ->
         use indexed = client root cache
         use direct = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, UseIndex = false))
-        Assert.Equal<ScoredDoc list>(indexed.Search("grape", 10), direct.Search("grape", 10)))
+        Assert.Equal<ScoredDoc[]>(indexed.Search("grape", 10).Docs, direct.Search("grape", 10).Docs))
 
 [<Fact>]
 let ``the default mode is used when none is given`` () =
     withTree tree (fun root cache ->
         use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, DefaultMode = Lexical))
-        Assert.Equal<ScoredDoc list>(ferret.Search("apple", 10, Lexical), ferret.Search("apple", 10)))
+        Assert.Equal<ScoredDoc[]>(ferret.Search("apple", 10, Lexical).Docs, ferret.Search("apple", 10).Docs))
 
 [<Fact>]
 let ``a missing root is an error`` () =
@@ -110,7 +121,7 @@ let ``ignore patterns exclude files from grep and search`` () =
     withTree tree (fun root cache ->
         use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, IgnorePatterns = [| "apple.txt" |]))
         Assert.Equal<string list>([ "grape.txt" ], grepFiles ferret)
-        Assert.Empty(ferret.Search("apple", 10)))
+        Assert.Empty((ferret.Search("apple", 10)).Docs))
 
 [<Fact>]
 let ``ignore patterns win over ignore files and can re-include`` () =
@@ -164,14 +175,14 @@ let ``a cancelled build leaves no index behind`` () =
 let ``an uncancelled token gives the same results as none`` () =
     withTree tree (fun root cache ->
         use ferret = client root cache
-        Assert.Equal<ScoredDoc list>(ferret.Search("apple", 10), ferret.Search("apple", 10, CancellationToken.None)))
+        Assert.Equal<ScoredDoc[]>(ferret.Search("apple", 10).Docs, ferret.Search("apple", 10, CancellationToken.None).Docs))
 
 [<Fact>]
 let ``the async search and build run and honour cancellation`` () =
     withTree tree (fun root cache ->
         use ferret = client root cache
         Assert.Equal(2, ferret.BuildIndexAsync(Lexical, CancellationToken.None).Result)
-        Assert.Equal<string list>([ Path.Combine(root, "apple.txt") ], ferret.SearchAsync("apple", 10, CancellationToken.None).Result |> List.map _.File)
+        Assert.Equal<string list>([ Path.Combine(root, "apple.txt") ], ferret.SearchAsync("apple", 10, CancellationToken.None).Result.Docs |> Array.map _.File |> List.ofArray)
         let search = ferret.SearchAsync("apple", 10, cancelled)
         Assert.ThrowsAny<OperationCanceledException>(fun () -> search.GetAwaiter().GetResult() |> ignore) |> ignore
         let build = ferret.BuildIndexAsync(Lexical, cancelled)

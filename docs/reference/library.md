@@ -9,13 +9,13 @@ Implements `IDisposable`. Reuse one instance across searches: it holds the loade
 | Member | Description |
 |---|---|
 | `new FerretClient()` / `new FerretClient(FerretOptions)` | Create a client. |
-| `Search(query, limit, mode) : ScoredDoc list` | Rank files, best first, at most `limit` (≥ 1, else `ArgumentException`). |
+| `Search(query, limit, mode) : SearchResult` | Rank files, best first, at most `limit` (≥ 1, else `ArgumentException`). `Truncated` is true when more files ranked than `limit`; in `Hybrid` that is counted within the 100 files each arm contributes. |
 | `Search(query, limit, mode, ct)` / `Search(query, limit, ct)` | Same, cancellable. |
 | `Search(query, limit)` | Uses `DefaultMode`. |
 | `Search(query)` | `DefaultMode`, limit 10. |
 | `Grep(pattern, MatchOptions) : Hit seq` | Regex search like `rg`. Lazy. A bad pattern throws `ArgumentException`. |
 | `Grep(pattern)` | Case-sensitive regex. |
-| `SearchAsync(query, limit, mode, ct) : Task<ScoredDoc list>` / `SearchAsync(query, limit, ct)` | `Search` on a thread-pool thread. |
+| `SearchAsync(query, limit, mode, ct) : Task<SearchResult>` / `SearchAsync(query, limit, ct)` | `Search` on a thread-pool thread. |
 | `BuildIndex(mode) : int` | Build or update the index; returns files indexed (for `Hybrid`, in the lexical index). |
 | `BuildIndex(mode, ct)` | Same, cancellable. |
 | `BuildIndexAsync(mode, ct) : Task<int>` / `BuildIndexAsync(ct)` | `BuildIndex` on a thread-pool thread. |
@@ -58,6 +58,7 @@ type SearchMode = Lexical | Semantic | Hybrid
 
 type Hit = { Path: string; LineNumber: int; Line: string }   // LineNumber is 1-based
 type ScoredDoc = { File: string; Score: float; Excerpts: Hit list }
+type SearchResult = { Docs: ScoredDoc[]; Truncated: bool }
 type MatchOptions = { IgnoreCase: bool; FixedStrings: bool; WordRegexp: bool }
 // MatchOptions.defaults: all false
 ```

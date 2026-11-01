@@ -71,7 +71,7 @@ open Ferret
 use ferret = new FerretClient(FerretOptions(Roots = [| "docs" |]))
 ferret.EnsureModel() |> ignore      // optional: download the semantic model now
 ferret.BuildIndex Hybrid |> ignore  // optional: index ahead of the first search
-for hit in ferret.Search("how do I install it", 10, Hybrid) do
+for hit in ferret.Search("how do I install it", 10, Hybrid).Docs do
     printfn "%.3f %s" hit.Score hit.File
 ```
 

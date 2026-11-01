@@ -16,6 +16,6 @@ Notes:
 
 - Each file shows up to 3 lines, so output is bounded by `--limit` × 3 lines.
 - Scores compare within one run only. Do not set a threshold on them.
-- In a .NET program, call the library instead: `FerretClient.Search` returns `ScoredDoc` values directly.
+- In a .NET program, call the library instead: `FerretClient.Search` returns a `SearchResult`: the `ScoredDoc` values in `Docs` and a `Truncated` flag.
 
 See [Command line reference](../reference/cli.md) for the exit codes.

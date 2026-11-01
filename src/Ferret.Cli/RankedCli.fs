@@ -41,7 +41,7 @@ let private writeTimings (w: TextWriter) (phases: Activity seq) =
 
 /// Reports missing roots, runs `search` over the rest, prints the results and, with `--timings`, the
 /// phases. Returns the exit code: 0 on results, 1 on none, 2 on error.
-let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list -> ScoredDoc list) : int =
+let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list -> SearchResult) : int =
     let roots = if args.Paths.IsEmpty then [ "" ] else args.Paths
     let missing = roots |> List.filter (fun r -> deps.Files.Kind r = Missing)
     for root in missing do
@@ -49,7 +49,7 @@ let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list 
     let searchRoots = roots |> List.except missing
     let finished = ResizeArray<Activity>()
     use listener = if args.Timings then listen finished else null
-    let results = search searchRoots
+    let results = (search searchRoots).Docs
     if args.Jsonl then
         Output.writeRankedJsonl deps.Out results
     else
@@ -58,7 +58,7 @@ let private runWith (deps: AdapterDeps) (args: RankedArgs) (search: string list 
     if args.Timings then writeTimings deps.Err finished
 
     if not missing.IsEmpty then 2
-    elif results.IsEmpty then 1
+    elif results.Length = 0 then 1
     else 0
 
 /// Runs a ranked search in `mode` through the facade.

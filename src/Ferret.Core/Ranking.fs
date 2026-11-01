@@ -6,6 +6,11 @@ open Ferret.Domain
 /// Scores candidates against a query. Returns best-first, without excerpts; callers apply limits.
 type Ranker = Query -> Candidate list -> ScoredDoc list
 
+/// Splits `docs`, ranked with one more than `limit` asked for, into the first `limit` and whether any were left.
+let bound (limit: int) (docs: ScoredDoc list) : SearchResult =
+    { Docs = docs |> List.truncate limit |> List.toArray
+      Truncated = docs.Length > limit }
+
 /// BM25 with OR semantics over the query terms, boosted for matches in the path, headings and
 /// frontmatter. Equal scores sort by ordinal path. Candidates
 /// without a query term are dropped.

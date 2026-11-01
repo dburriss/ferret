@@ -21,7 +21,7 @@ open Ferret
 let main _ =
     use ferret = new FerretClient(FerretOptions(Roots = [| "../docs" |]))
 
-    for hit in ferret.Search("install the tool", 5, Lexical) do
+    for hit in ferret.Search("install the tool", 5, Lexical).Docs do
         printfn "%.3f %s" hit.Score hit.File
 
     0
@@ -40,7 +40,7 @@ You should see up to five files, best first, each with a score, for example `0.9
 Each result carries excerpts. Replace the loop:
 
 ```fsharp
-    for hit in ferret.Search("install the tool", 5, Lexical) do
+    for hit in ferret.Search("install the tool", 5, Lexical).Docs do
         printfn "%.3f %s" hit.Score hit.File
         for line in hit.Excerpts do
             printfn "  %d: %s" line.LineNumber line.Line

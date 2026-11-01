@@ -27,7 +27,7 @@ let writeCount (w: TextWriter) (withFilename: bool) (path: string) (count: int) 
 
 /// One `path:line:text` line per excerpt, files in rank order. With `scores`, each line is
 /// prefixed by `[score]` (4 decimals, invariant culture).
-let writeRanked (w: TextWriter) (scores: bool) (docs: ScoredDoc list) =
+let writeRanked (w: TextWriter) (scores: bool) (docs: ScoredDoc seq) =
     for doc in docs do
         for hit in doc.Excerpts do
             if scores then
@@ -42,7 +42,7 @@ let private jsonString (s: string) = JsonSerializer.Serialize(s, jsonOptions)
 
 /// One JSON object per excerpt, files in rank order: `{"file","line","score","text"}`. The score is
 /// always present (4 decimals, invariant culture).
-let writeRankedJsonl (w: TextWriter) (docs: ScoredDoc list) =
+let writeRankedJsonl (w: TextWriter) (docs: ScoredDoc seq) =
     for doc in docs do
         let score = doc.Score.ToString("F4", CultureInfo.InvariantCulture)
         for hit in doc.Excerpts do

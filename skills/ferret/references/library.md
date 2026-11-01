@@ -9,7 +9,7 @@ Setup: `dotnet add package Ferret`.
 | Member | Description |
 |---|---|
 | `new FerretClient()` / `new FerretClient(FerretOptions)` | Create. |
-| `Search(query, limit, mode) : ScoredDoc list` | Best first, at most `limit` (>= 1 else `ArgumentException`). |
+| `Search(query, limit, mode) : SearchResult` | `Docs` best first, at most `limit` (>= 1 else `ArgumentException`); `Truncated` is true when more files ranked. |
 | `Search(query, limit)` | Uses `DefaultMode`. |
 | `Search(query)` | `DefaultMode`, limit 10. |
 | `Grep(pattern, MatchOptions) : Hit seq` | rg-like regex, lazy. Bad pattern throws `ArgumentException`. |
@@ -41,6 +41,7 @@ Errors: missing root throws `DirectoryNotFoundException`; missing model throws `
 type SearchMode = Lexical | Semantic | Hybrid
 type Hit = { Path: string; LineNumber: int; Line: string }   // 1-based
 type ScoredDoc = { File: string; Score: float; Excerpts: Hit list }
+type SearchResult = { Docs: ScoredDoc[]; Truncated: bool }
 type MatchOptions = { IgnoreCase: bool; FixedStrings: bool; WordRegexp: bool }  // MatchOptions.defaults: all false
 ```
 
@@ -56,7 +57,7 @@ open Ferret
 let options = FerretOptions(Roots = [| "docs" |], Progress = System.Action<string>(eprintfn "%s"))
 use ferret = new FerretClient(options)
 
-for doc in ferret.Search("what do I do when a request fails", 5, Semantic) do
+for doc in ferret.Search("what do I do when a request fails", 5, Semantic).Docs do
     printfn "%.3f %s" doc.Score doc.File
     for h in doc.Excerpts do
         printfn "  %d: %s" h.LineNumber h.Line

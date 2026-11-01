@@ -152,37 +152,39 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     /// Ranks the files under the roots against `query`, best first, at most `limit`, each with excerpts.
     /// Cancelling `ct` stops it with `OperationCanceledException`; a cancelled run leaves the saved
     /// indexes as they were.
-    member _.Search(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : ScoredDoc list =
+    member _.Search(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : SearchResult =
         if limit < 1 then invalidArg (nameof limit) "limit must be at least 1"
+        let wanted = limit + 1
         match mode with
-        | Lexical -> lexical ct query limit
-        | Semantic -> semantic ct query limit
+        | Lexical -> lexical ct query wanted
+        | Semantic -> semantic ct query wanted
         | Hybrid ->
             let depth = HybridSearch.ArmDepth
             let lexicalHits = lexical ct query depth
-            HybridSearch.fuse HybridSearch.DefaultK 1.0 1.0 limit lexicalHits (semantic ct query depth)
+            HybridSearch.fuse HybridSearch.DefaultK 1.0 1.0 wanted lexicalHits (semantic ct query depth)
+        |> Ranking.bound limit
 
     /// `Search` that cannot be cancelled.
-    member this.Search(query: string, limit: int, mode: SearchMode) : ScoredDoc list =
+    member this.Search(query: string, limit: int, mode: SearchMode) : SearchResult =
         this.Search(query, limit, mode, CancellationToken.None)
 
     /// `Search` in the default mode.
-    member this.Search(query: string, limit: int, ct: CancellationToken) : ScoredDoc list =
+    member this.Search(query: string, limit: int, ct: CancellationToken) : SearchResult =
         this.Search(query, limit, options.DefaultMode, ct)
 
     /// `Search` in the default mode.
-    member this.Search(query: string, limit: int) : ScoredDoc list = this.Search(query, limit, options.DefaultMode)
+    member this.Search(query: string, limit: int) : SearchResult = this.Search(query, limit, options.DefaultMode)
 
     /// `Search` in the default mode, returning at most 10 files.
-    member this.Search(query: string) : ScoredDoc list = this.Search(query, 10)
+    member this.Search(query: string) : SearchResult = this.Search(query, 10)
 
     /// `Search` on a thread-pool thread, so the caller is not blocked. The work is CPU-bound, not
     /// asynchronous I/O: it occupies a pool thread until it finishes or `ct` is cancelled.
-    member this.SearchAsync(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : Task<ScoredDoc list> =
+    member this.SearchAsync(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : Task<SearchResult> =
         Task.Run((fun () -> this.Search(query, limit, mode, ct)), ct)
 
     /// `SearchAsync` in the default mode.
-    member this.SearchAsync(query: string, limit: int, ct: CancellationToken) : Task<ScoredDoc list> =
+    member this.SearchAsync(query: string, limit: int, ct: CancellationToken) : Task<SearchResult> =
         this.SearchAsync(query, limit, options.DefaultMode, ct)
 
     /// Builds or updates the index for `mode` without searching, so the first search is fast. `Hybrid` builds

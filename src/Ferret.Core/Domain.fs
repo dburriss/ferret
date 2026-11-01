@@ -45,3 +45,6 @@ type ScoredDoc =
     { File: string
       Score: float
       Excerpts: Hit list }
+
+/// The ranked files for a query, best first, and whether more files ranked than the limit allowed.
+type SearchResult = { Docs: ScoredDoc[]; Truncated: bool }

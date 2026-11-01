@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** `FerretClient.Search` and `SearchAsync` return a `SearchResult` (`Docs: ScoredDoc[]`, `Truncated: bool`) instead of a `ScoredDoc list`, so a caller can tell when the limit cut the results off.
 - GitHub release assets are now archives (`ferret-<rid>.tar.gz`, `.zip` on Windows) holding the exe and the ONNX Runtime library it loads. A `ferret-bundled-<rid>` archive per platform embeds the semantic model and works offline.
 
 ### Fixed
