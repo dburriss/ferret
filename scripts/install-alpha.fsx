@@ -6,12 +6,14 @@
 // Packs the current source as a dotnet tool with a patch-bumped alpha version and
 // installs it as a global dotnet tool, useful for dog-fooding in-progress work.
 //
-// Version logic: reads <Version> from the tool .fsproj, strips any existing suffix,
+// Version logic: reads <Version> from the version file, strips any existing suffix,
 // increments the patch segment, and appends "-alpha"  (e.g. 0.7.1 -> 0.7.2-alpha).
 //
 // Arguments:
 //   --fsproj <path>       Relative path from repo root to the tool .fsproj (required).
 //   --solution <path>     Relative path from repo root to the solution file (required).
+//   --version-file <path> Relative path from repo root to the file holding <Version> in its
+//                         first <PropertyGroup> (default: Directory.Build.props).
 //   --package-id <id>     The tool's NuGet package id, e.g. Acme.Tool (required).
 //   --dry-run             Print what would happen without building or installing.
 //
@@ -64,19 +66,27 @@ if isDryRun then
     printfn "No changes will be made."
     printfn "===================="
 
+let tryGetArg name =
+    args
+    |> Array.tryFindIndex ((=) name)
+    |> Option.bind (fun i -> args |> Array.tryItem (i + 1))
+
 let rootDir = __SOURCE_DIRECTORY__ |> Directory.GetParent
 let rootPath = rootDir.FullName
 let fsprojRelative = getArg "--fsproj"
 let fsprojPath = Path.Combine(rootPath, fsprojRelative)
+let versionFilePath =
+    Path.Combine(rootPath, tryGetArg "--version-file" |> Option.defaultValue "Directory.Build.props")
 let slnPath = Path.Combine(rootPath, getArg "--solution")
 let packageId = getArg "--package-id"
 // dotnet tool commands treat package ids case-insensitively and list them in lowercase
 let toolId = packageId.ToLowerInvariant()
 
 if not (File.Exists fsprojPath) then failwithf "Project file not found: %s" fsprojPath
+if not (File.Exists versionFilePath) then failwithf "Version file not found: %s" versionFilePath
 if not (File.Exists slnPath) then failwithf "Solution file not found: %s" slnPath
 
-let projectDoc = XDocument.Load(fsprojPath)
+let projectDoc = XDocument.Load(versionFilePath)
 let projectRoot =
     match projectDoc.Root with
     | null -> failwith "Project XML is empty"
@@ -85,10 +95,10 @@ let ns = projectRoot.Name.Namespace
 let propertyGroup =
     projectRoot.Elements(ns + "PropertyGroup")
     |> Seq.tryHead
-    |> Option.defaultWith (fun () -> failwith "No <PropertyGroup> found in fsproj")
+    |> Option.defaultWith (fun () -> failwith "No <PropertyGroup> found in version file")
 let versionElement =
     match propertyGroup.Element(ns + "Version") with
-    | null -> failwith "No <Version> element found in fsproj"
+    | null -> failwith "No <Version> element found in version file"
     | el -> el
 
 let versionString = versionElement.Value
@@ -101,7 +111,7 @@ let currentVersion = Version.Parse(numericPart)
 let nextPatch = Version(currentVersion.Major, currentVersion.Minor, currentVersion.Build + 1)
 let alphaVersion = sprintf "%O-alpha" nextPatch
 
-printfn "fsproj version : %s" versionString
+printfn "version        : %s" versionString
 printfn "alpha version  : %s" alphaVersion
 printfn ""
 
