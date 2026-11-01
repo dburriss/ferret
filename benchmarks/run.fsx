@@ -16,7 +16,7 @@ open System.Text.Json
 let here = __SOURCE_DIRECTORY__
 let data = Path.Combine(here, "data")
 let runs = match fsi.CommandLineArgs |> Array.skip 1 with [| n |] -> int n | _ -> 10
-let ferretDll = Path.Combine(here, "..", "src", "Ferret.Cli", "bin", "Release", "net10.0", "Ferret.Cli.dll") |> Path.GetFullPath
+let ferretDll = Path.Combine(here, "..", "src", "Ferret.Cli", "bin", "Release", "net10.0", "ferret.dll") |> Path.GetFullPath
 
 let wanted =
     match Environment.GetEnvironmentVariable "FERRET_BENCH_CORPORA" with

@@ -1,0 +1,1007 @@
+{
+  "hyperfine": "hyperfine 2.0.0",
+  "lex": [
+    {
+      "corpus": "linux",
+      "indexBytes": 226991787,
+      "query": "mutex lock",
+      "timings": [
+        {
+          "mean_ms": 22074.5198999,
+          "median_ms": 21475.1470205,
+          "min_ms": 21360.218,
+          "peak_rss_mib": 107.4140625,
+          "stddev_ms": 1361.6142002570766,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 44372.7683086,
+          "median_ms": 44035.7626045,
+          "min_ms": 42242.711,
+          "peak_rss_mib": 1760.671875,
+          "stddev_ms": 1667.053490909042,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 3412.2393082999997,
+          "median_ms": 3415.0027290000003,
+          "min_ms": 3323.494208,
+          "peak_rss_mib": 340.7890625,
+          "stddev_ms": 57.419307421150044,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "indexBytes": 226991787,
+      "query": "memory allocation failure",
+      "timings": [
+        {
+          "mean_ms": 21620.131787600003,
+          "median_ms": 21658.820187499998,
+          "min_ms": 21332.947874999998,
+          "peak_rss_mib": 107.6640625,
+          "stddev_ms": 187.39017386484747,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 43858.4690166,
+          "median_ms": 43941.910583,
+          "min_ms": 41846.512958,
+          "peak_rss_mib": 1762.5390625,
+          "stddev_ms": 1337.0906064511623,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 3451.9033123,
+          "median_ms": 3466.647125,
+          "min_ms": 3385.072083,
+          "peak_rss_mib": 341.109375,
+          "stddev_ms": 43.35690808095353,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "indexBytes": 121402871,
+      "query": "thread pool",
+      "timings": [
+        {
+          "mean_ms": 12050.0404751,
+          "median_ms": 12017.756874499999,
+          "min_ms": 11945.348917000001,
+          "peak_rss_mib": 115.5234375,
+          "stddev_ms": 127.35150426324584,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 18898.715508499998,
+          "median_ms": 18849.986708499997,
+          "min_ms": 18690.712666,
+          "peak_rss_mib": 874.828125,
+          "stddev_ms": 162.20321313948315,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 2839.6258457,
+          "median_ms": 2839.0651875000003,
+          "min_ms": 2816.28075,
+          "peak_rss_mib": 288.953125,
+          "stddev_ms": 17.645158124457563,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "indexBytes": 121402871,
+      "query": "garbage collection",
+      "timings": [
+        {
+          "mean_ms": 12174.2470083,
+          "median_ms": 12104.369896,
+          "min_ms": 11898.958833,
+          "peak_rss_mib": 119.21875,
+          "stddev_ms": 272.80844091148464,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 18824.922021,
+          "median_ms": 18843.011875000004,
+          "min_ms": 18668.784125,
+          "peak_rss_mib": 883.1875,
+          "stddev_ms": 71.77048642070628,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 2894.6071832000002,
+          "median_ms": 2883.8588119999995,
+          "min_ms": 2839.753833,
+          "peak_rss_mib": 289.734375,
+          "stddev_ms": 45.742264339303055,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "scifact",
+      "indexBytes": 7107232,
+      "query": "gene expression cancer",
+      "timings": [
+        {
+          "mean_ms": 852.4874084,
+          "median_ms": 852.9876460000002,
+          "min_ms": 837.4731670000001,
+          "peak_rss_mib": 71.03125,
+          "stddev_ms": 10.274971947572373,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1327.7313541,
+          "median_ms": 1325.403562,
+          "min_ms": 1281.505084,
+          "peak_rss_mib": 119.59375,
+          "stddev_ms": 38.56781824477322,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 312.7249084,
+          "median_ms": 311.79058349999997,
+          "min_ms": 308.903125,
+          "peak_rss_mib": 82.828125,
+          "stddev_ms": 2.912859994451512,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "scifact",
+      "indexBytes": 7107232,
+      "query": "vitamin deficiency",
+      "timings": [
+        {
+          "mean_ms": 838.8484000000001,
+          "median_ms": 837.7637915,
+          "min_ms": 824.174875,
+          "peak_rss_mib": 70.8125,
+          "stddev_ms": 9.527232396974302,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1314.6222415,
+          "median_ms": 1318.067562,
+          "min_ms": 1277.93775,
+          "peak_rss_mib": 119.53125,
+          "stddev_ms": 25.76663518504277,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 306.61873340000005,
+          "median_ms": 307.52281250000004,
+          "min_ms": 295.42687500000005,
+          "peak_rss_mib": 82.9375,
+          "stddev_ms": 5.020981225978869,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "nfcorpus",
+      "indexBytes": 5244519,
+      "query": "breast cancer diet",
+      "timings": [
+        {
+          "mean_ms": 684.2904834000001,
+          "median_ms": 681.549271,
+          "min_ms": 664.29475,
+          "peak_rss_mib": 70.140625,
+          "stddev_ms": 16.92842364880634,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1064.1269541000001,
+          "median_ms": 1066.8437915,
+          "min_ms": 1014.779667,
+          "peak_rss_mib": 106.921875,
+          "stddev_ms": 23.20885350113591,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 258.3987875,
+          "median_ms": 257.7910205,
+          "min_ms": 254.36983400000003,
+          "peak_rss_mib": 77.3828125,
+          "stddev_ms": 3.8935661836525304,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "nfcorpus",
+      "indexBytes": 5244519,
+      "query": "cholesterol",
+      "timings": [
+        {
+          "mean_ms": 665.2327084000001,
+          "median_ms": 662.1003334999999,
+          "min_ms": 655.8828750000001,
+          "peak_rss_mib": 70.0546875,
+          "stddev_ms": 9.685628395395963,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 1061.7418374000001,
+          "median_ms": 1063.3022915,
+          "min_ms": 1045.176375,
+          "peak_rss_mib": 106.859375,
+          "stddev_ms": 8.793634771147364,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 254.94158729999998,
+          "median_ms": 255.19333300000002,
+          "min_ms": 247.35279100000002,
+          "peak_rss_mib": 77.734375,
+          "stddev_ms": 4.737097596021013,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 258.4421586,
+          "median_ms": 257.4080625,
+          "min_ms": 254.8265,
+          "peak_rss_mib": 69.6171875,
+          "stddev_ms": 3.372639229683594,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 298.27396230000005,
+          "median_ms": 295.792979,
+          "min_ms": 294.264875,
+          "peak_rss_mib": 74.4375,
+          "stddev_ms": 7.016708494856159,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 153.7987001,
+          "median_ms": 153.97472900000002,
+          "min_ms": 152.271125,
+          "peak_rss_mib": 70.375,
+          "stddev_ms": 0.9926841786516067,
+          "tool": "index-warm"
+        }
+      ]
+    },
+    {
+      "corpus": "fsharp-docs",
+      "indexBytes": 540425,
+      "query": "async workflow",
+      "timings": [
+        {
+          "mean_ms": 239.65521670000004,
+          "median_ms": 239.13543750000002,
+          "min_ms": 237.75775000000002,
+          "peak_rss_mib": 69.578125,
+          "stddev_ms": 1.7435995047396804,
+          "tool": "per-run"
+        },
+        {
+          "mean_ms": 279.99663759999993,
+          "median_ms": 279.76610450000004,
+          "min_ms": 276.822,
+          "peak_rss_mib": 74.5078125,
+          "stddev_ms": 2.1235874974658273,
+          "tool": "index-build"
+        },
+        {
+          "mean_ms": 134.19219590000003,
+          "median_ms": 134.0583125,
+          "min_ms": 133.122958,
+          "peak_rss_mib": 69.9296875,
+          "stddev_ms": 0.7192550221074336,
+          "tool": "index-warm"
+        }
+      ]
+    }
+  ],
+  "os": "macOS 26.7.1",
+  "results": [
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "mutex_lock",
+      "timings": [
+        {
+          "mean_ms": 1132.6500708,
+          "median_ms": 1133.4683750000002,
+          "min_ms": 1101.8401250000002,
+          "peak_rss_mib": 14.296875,
+          "stddev_ms": 16.382653813134283,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8139.369837699998,
+          "median_ms": 8128.867438,
+          "min_ms": 8041.140332999999,
+          "peak_rss_mib": 75.6875,
+          "stddev_ms": 49.00825111346898,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "TODO",
+      "timings": [
+        {
+          "mean_ms": 1121.9130664999998,
+          "median_ms": 1123.312479,
+          "min_ms": 1094.105333,
+          "peak_rss_mib": 14.4453125,
+          "stddev_ms": 17.875889133851068,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8244.1956374,
+          "median_ms": 8226.762375,
+          "min_ms": 8186.558584,
+          "peak_rss_mib": 75.625,
+          "stddev_ms": 63.269267977513366,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-F"
+      ],
+      "pattern": "struct file_operations",
+      "timings": [
+        {
+          "mean_ms": 1118.9874332,
+          "median_ms": 1120.950625,
+          "min_ms": 1066.305583,
+          "peak_rss_mib": 14.40625,
+          "stddev_ms": 38.10260166902106,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8250.815925,
+          "median_ms": 8236.6844165,
+          "min_ms": 8193.783542000001,
+          "peak_rss_mib": 75.515625,
+          "stddev_ms": 51.97123405595366,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "[A-Z]{5}_[A-Z]{5}",
+      "timings": [
+        {
+          "mean_ms": 1533.6881498,
+          "median_ms": 1519.5793330000001,
+          "min_ms": 1512.2087080000001,
+          "peak_rss_mib": 76.859375,
+          "stddev_ms": 24.175919763679996,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 9735.555095799999,
+          "median_ms": 9690.171333,
+          "min_ms": 9604.52575,
+          "peak_rss_mib": 75.765625,
+          "stddev_ms": 120.06751947563191,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [
+        "-i"
+      ],
+      "pattern": "hello",
+      "timings": [
+        {
+          "mean_ms": 1110.9539500000003,
+          "median_ms": 1107.4461875,
+          "min_ms": 1071.240833,
+          "peak_rss_mib": 14.4140625,
+          "stddev_ms": 23.480221516462528,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8227.1918667,
+          "median_ms": 8225.1145625,
+          "min_ms": 8175.938792,
+          "peak_rss_mib": 75.7890625,
+          "stddev_ms": 39.14767736449466,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "linux",
+      "flags": [],
+      "pattern": "zzzznomatch",
+      "timings": [
+        {
+          "mean_ms": 1111.5422082999999,
+          "median_ms": 1104.1103335,
+          "min_ms": 1099.275041,
+          "peak_rss_mib": 14.078125,
+          "stddev_ms": 13.20791501884357,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 8199.990483200001,
+          "median_ms": 8192.563312499999,
+          "min_ms": 8181.968916000001,
+          "peak_rss_mib": 75.5546875,
+          "stddev_ms": 17.20527073659041,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [],
+      "pattern": "mutex_lock",
+      "timings": [
+        {
+          "mean_ms": 819.5720709000002,
+          "median_ms": 823.2342915,
+          "min_ms": 796.3627090000001,
+          "peak_rss_mib": 16.3125,
+          "stddev_ms": 14.914715957401762,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6159.479558500001,
+          "median_ms": 6141.021688000001,
+          "min_ms": 6079.168334,
+          "peak_rss_mib": 80.0703125,
+          "stddev_ms": 60.50510658166269,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [],
+      "pattern": "TODO",
+      "timings": [
+        {
+          "mean_ms": 818.3733748,
+          "median_ms": 819.443333,
+          "min_ms": 797.254541,
+          "peak_rss_mib": 16.3046875,
+          "stddev_ms": 13.241352299105076,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6192.544949900001,
+          "median_ms": 6196.0392915,
+          "min_ms": 6072.941166,
+          "peak_rss_mib": 80.03125,
+          "stddev_ms": 83.40128955329834,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [
+        "-F"
+      ],
+      "pattern": "struct file_operations",
+      "timings": [
+        {
+          "mean_ms": 817.5534250000001,
+          "median_ms": 819.2490415,
+          "min_ms": 788.360708,
+          "peak_rss_mib": 16.5390625,
+          "stddev_ms": 16.20683943865916,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6142.0155332,
+          "median_ms": 6134.5551665,
+          "min_ms": 6057.9755000000005,
+          "peak_rss_mib": 80.0078125,
+          "stddev_ms": 50.13899501447336,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [],
+      "pattern": "[A-Z]{5}_[A-Z]{5}",
+      "timings": [
+        {
+          "mean_ms": 864.5438210000002,
+          "median_ms": 861.619042,
+          "min_ms": 834.913083,
+          "peak_rss_mib": 18.2109375,
+          "stddev_ms": 17.57418060486148,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6262.5328042,
+          "median_ms": 6264.367625,
+          "min_ms": 6150.300833,
+          "peak_rss_mib": 80.2578125,
+          "stddev_ms": 75.16153558171696,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [
+        "-i"
+      ],
+      "pattern": "hello",
+      "timings": [
+        {
+          "mean_ms": 823.4494332,
+          "median_ms": 820.770521,
+          "min_ms": 796.135791,
+          "peak_rss_mib": 16.6171875,
+          "stddev_ms": 16.734970662323988,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6191.6378043,
+          "median_ms": 6202.5748955,
+          "min_ms": 6110.686667000001,
+          "peak_rss_mib": 80.109375,
+          "stddev_ms": 45.11219630207564,
+          "tool": "ferret"
+        }
+      ]
+    },
+    {
+      "corpus": "dotnet-runtime",
+      "flags": [],
+      "pattern": "zzzznomatch",
+      "timings": [
+        {
+          "mean_ms": 831.1939418999999,
+          "median_ms": 822.8121465,
+          "min_ms": 792.0665,
+          "peak_rss_mib": 16.1875,
+          "stddev_ms": 40.41131584438382,
+          "tool": "rg"
+        },
+        {
+          "mean_ms": 6142.8964582,
+          "median_ms": 6150.453104,
+          "min_ms": 6038.764583,
+          "peak_rss_mib": 80.1328125,
+          "stddev_ms": 41.53681030442186,
+          "tool": "ferret"
+        }
+      ]
+    }
+  ],
+  "runs": 10,
+  "semantic": [
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 2552989,
+      "mode": "--sem",
+      "phases": {
+        "build": [
+          {
+            "ms": 1,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 12.6,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7249.5,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=164 chunks=1637 tokenize.ms=4071.8 inference.ms=98859.2 tokens=364358 embed.wall.ms=6952"
+          },
+          {
+            "ms": 2.2,
+            "phase": "ferret.index.save",
+            "tags": "saved=True files.removed=0"
+          },
+          {
+            "ms": 0.9,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=0 inference.ms=0.9 tokens=4"
+          },
+          {
+            "ms": 4.8,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 9.2,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          }
+        ],
+        "warm": [
+          {
+            "ms": 2.5,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True"
+          },
+          {
+            "ms": 12.3,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 3.3,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=0 chunks=0 tokenize.ms=0 inference.ms=0 tokens=0 embed.wall.ms=0.1"
+          },
+          {
+            "ms": 0,
+            "phase": "ferret.index.save",
+            "tags": "saved=False files.removed=0"
+          },
+          {
+            "ms": 87.9,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=3.7 inference.ms=4.2 tokens=4"
+          },
+          {
+            "ms": 4.5,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 9,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          }
+        ]
+      },
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 7530.744138999999,
+          "median_ms": 7464.6315,
+          "min_ms": 7327.276834,
+          "peak_rss_mib": 903.125,
+          "stddev_ms": 243.35485555721934,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65608.36059666665,
+          "median_ms": 65565.937083,
+          "min_ms": 65525.395790999995,
+          "peak_rss_mib": 365.78125,
+          "stddev_ms": 110.46525271860854,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 218.37910810000002,
+          "median_ms": 218.5119785,
+          "min_ms": 215.92,
+          "peak_rss_mib": 192.9453125,
+          "stddev_ms": 1.98803168420786,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 155.9031917,
+          "median_ms": 155.6148125,
+          "min_ms": 154.05966700000002,
+          "peak_rss_mib": 268.859375,
+          "stddev_ms": 1.4394439124033684,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 2552989,
+      "mode": "--sem",
+      "phases": null,
+      "query": "how do I handle errors in async code",
+      "timings": [
+        {
+          "mean_ms": 7731.485736,
+          "median_ms": 7802.321708,
+          "min_ms": 7560.660542,
+          "peak_rss_mib": 877.6875,
+          "stddev_ms": 148.65535030816716,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65674.51197233333,
+          "median_ms": 65610.754709,
+          "min_ms": 65541.80870800001,
+          "peak_rss_mib": 373.65625,
+          "stddev_ms": 173.59706783747689,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 218.09554170000004,
+          "median_ms": 218.03260400000002,
+          "min_ms": 215.883458,
+          "peak_rss_mib": 193.0859375,
+          "stddev_ms": 1.8639360938997467,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 158.58469589999999,
+          "median_ms": 158.3629165,
+          "min_ms": 155.90300000000002,
+          "peak_rss_mib": 268.921875,
+          "stddev_ms": 2.7561545658497706,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 3093414,
+      "mode": "--hybrid",
+      "phases": {
+        "build": [
+          {
+            "ms": 0.4,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 5,
+            "phase": "ferret.enumerate",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7.5,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 153.3,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.reused=0 files.built=164"
+          },
+          {
+            "ms": 7.2,
+            "phase": "ferret.index.save",
+            "tags": "saved=True entries=164 files.removed=0"
+          },
+          {
+            "ms": 2.8,
+            "phase": "ferret.rank",
+            "tags": "candidates=164"
+          },
+          {
+            "ms": 34.1,
+            "phase": "ferret.excerpts",
+            "tags": "files=79"
+          },
+          {
+            "ms": 0.5,
+            "phase": "ferret.index.load",
+            "tags": "loaded=False"
+          },
+          {
+            "ms": 7.1,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7218.8,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=164 chunks=1637 tokenize.ms=3768.3 inference.ms=99239.1 tokens=364358 embed.wall.ms=6913"
+          },
+          {
+            "ms": 1.5,
+            "phase": "ferret.index.save",
+            "tags": "saved=True files.removed=0"
+          },
+          {
+            "ms": 1,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=0 inference.ms=0.9 tokens=4"
+          },
+          {
+            "ms": 4.9,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 9.4,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          },
+          {
+            "ms": 3.5,
+            "phase": "ferret.fuse",
+            "tags": "lexical=79 semantic=100 fused=100"
+          }
+        ],
+        "warm": [
+          {
+            "ms": 8.4,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True entries=164"
+          },
+          {
+            "ms": 5,
+            "phase": "ferret.enumerate",
+            "tags": "files=170"
+          },
+          {
+            "ms": 7.2,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 2.6,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.reused=164 files.built=0"
+          },
+          {
+            "ms": 0.1,
+            "phase": "ferret.index.save",
+            "tags": "saved=False entries=164 files.removed=0"
+          },
+          {
+            "ms": 2.9,
+            "phase": "ferret.rank",
+            "tags": "candidates=164"
+          },
+          {
+            "ms": 36.4,
+            "phase": "ferret.excerpts",
+            "tags": "files=79"
+          },
+          {
+            "ms": 1.2,
+            "phase": "ferret.index.load",
+            "tags": "loaded=True"
+          },
+          {
+            "ms": 6.8,
+            "phase": "ferret.stamp",
+            "tags": "files=170"
+          },
+          {
+            "ms": 3.1,
+            "phase": "ferret.index.build",
+            "tags": "files.total=170 files.built=0 chunks=0 tokenize.ms=0 inference.ms=0 tokens=0 embed.wall.ms=0.1"
+          },
+          {
+            "ms": 0,
+            "phase": "ferret.index.save",
+            "tags": "saved=False files.removed=0"
+          },
+          {
+            "ms": 88.4,
+            "phase": "ferret.embed",
+            "tags": "kind=query tokenize.ms=3.7 inference.ms=4.1 tokens=4"
+          },
+          {
+            "ms": 4.6,
+            "phase": "ferret.rank",
+            "tags": "files=164"
+          },
+          {
+            "ms": 10,
+            "phase": "ferret.excerpts",
+            "tags": "files=100"
+          },
+          {
+            "ms": 3.1,
+            "phase": "ferret.fuse",
+            "tags": "lexical=79 semantic=100 fused=100"
+          }
+        ]
+      },
+      "query": "pattern matching",
+      "timings": [
+        {
+          "mean_ms": 7756.820056,
+          "median_ms": 7757.4094589999995,
+          "min_ms": 7605.937959,
+          "peak_rss_mib": 958.28125,
+          "stddev_ms": 150.58826059954217,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65598.428958,
+          "median_ms": 65507.055667,
+          "min_ms": 65504.377791,
+          "peak_rss_mib": 365.640625,
+          "stddev_ms": 160.58787305837626,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 285.8916541,
+          "median_ms": 285.61706250000003,
+          "min_ms": 283.695125,
+          "peak_rss_mib": 197.109375,
+          "stddev_ms": 1.633427618346058,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 164.6878792,
+          "median_ms": 164.68375000000003,
+          "min_ms": 163.42683300000002,
+          "peak_rss_mib": 269.2578125,
+          "stddev_ms": 0.9668248944676541,
+          "tool": "ck index-warm"
+        }
+      ]
+    },
+    {
+      "buildRuns": 3,
+      "ckIndexBytes": 4547531,
+      "corpus": "fsharp-docs",
+      "ferretIndexBytes": 3093414,
+      "mode": "--hybrid",
+      "phases": null,
+      "query": "how do I handle errors in async code",
+      "timings": [
+        {
+          "mean_ms": 7915.061250333333,
+          "median_ms": 7963.3907500000005,
+          "min_ms": 7673.808583999999,
+          "peak_rss_mib": 881.828125,
+          "stddev_ms": 221.08588578612154,
+          "tool": "ferret index-build"
+        },
+        {
+          "mean_ms": 65584.13245833335,
+          "median_ms": 65492.939207999996,
+          "min_ms": 65488.12150000001,
+          "peak_rss_mib": 369.625,
+          "stddev_ms": 162.14149494955888,
+          "tool": "ck index-build"
+        },
+        {
+          "mean_ms": 268.84345420000005,
+          "median_ms": 268.1393335,
+          "min_ms": 265.93687500000004,
+          "peak_rss_mib": 196.6953125,
+          "stddev_ms": 2.0199931581639237,
+          "tool": "ferret index-warm"
+        },
+        {
+          "mean_ms": 165.5504917,
+          "median_ms": 165.674771,
+          "min_ms": 164.465708,
+          "peak_rss_mib": 269.25,
+          "stddev_ms": 0.8511037751573653,
+          "tool": "ck index-warm"
+        }
+      ]
+    }
+  ]
+}
