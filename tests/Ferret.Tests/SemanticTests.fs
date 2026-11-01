@@ -224,7 +224,10 @@ let ``embedding phases carry the tokenize and inference breakdown`` () =
         listener.ActivityStopped <- (fun a -> lock finished (fun () -> finished.Add a))
         ActivitySource.AddActivityListener listener
         search cache (new FakeEmbedder()) root "cats" 10 |> ignore
-        let phase name = finished |> Seq.find (fun a -> a.OperationName = name)
+        // The listener is process-wide, so parallel lexical tests also emit "ferret.index.build" (untagged).
+        let phase name =
+            lock finished (fun () ->
+                finished |> Seq.find (fun a -> a.OperationName = name && not (isNull (a.GetTagItem "tokenize.ms"))))
         for name in [ "ferret.index.build"; "ferret.embed" ] do
             let a = phase name
             for key in [ "tokenize.ms"; "inference.ms"; "tokens" ] do
