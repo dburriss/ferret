@@ -2,6 +2,7 @@ namespace Ferret
 
 open System
 open System.IO
+open System.Threading
 open System.Threading.Tasks
 open Ferret.Domain
 open Ferret.FileSource
@@ -62,16 +63,20 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
         if done' = 0 then log $"embedding {total} chunks"
         elif total >= 200 && done' % (total / 10) = 0 then log $"embedded {done'}/{total} chunks"
 
-    let modelSource () =
-        match options.ModelDir with
-        | null
-        | "" -> ModelLocator.resolve (Option.ofObj options.ModelUrl) options.Offline log cacheDir
-        | dir ->
-            let onnx, vocab = Path.Combine(dir, "model_quantized.onnx"), Path.Combine(dir, "vocab.txt")
-            if File.Exists onnx && File.Exists vocab then
-                Files(onnx, vocab)
-            else
-                raise (ModelUnavailable $"model_quantized.onnx and vocab.txt not found in {dir}")
+    let modelSourceAsync (ct: CancellationToken) : Task<ModelSource> =
+        task {
+            match options.ModelDir with
+            | null
+            | "" -> return! ModelLocator.resolveAsync (Option.ofObj options.ModelUrl) options.Offline log cacheDir ct
+            | dir ->
+                let onnx, vocab = Path.Combine(dir, "model_quantized.onnx"), Path.Combine(dir, "vocab.txt")
+                if File.Exists onnx && File.Exists vocab then
+                    return Files(onnx, vocab)
+                else
+                    return raise (ModelUnavailable $"model_quantized.onnx and vocab.txt not found in {dir}")
+        }
+
+    let modelSource () = (modelSourceAsync CancellationToken.None).GetAwaiter().GetResult()
 
     let embedder = lazy (ModelLocator.load (modelSource ()))
 
@@ -81,15 +86,15 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
                 raise (DirectoryNotFoundException $"{root}: No such file or directory")
         roots
 
-    let lexical (query: string) (limit: int) =
+    let lexical (ct: CancellationToken) (query: string) (limit: int) =
         if options.UseIndex then
-            Search.searchIndexed index Ranking.bm25 files (checkedRoots ()) query limit
+            Search.searchIndexedWith ct index Ranking.bm25 files (checkedRoots ()) query limit
         else
-            Search.search Ranking.bm25 files (checkedRoots ()) query limit
+            Search.searchWith ct Ranking.bm25 files (checkedRoots ()) query limit
 
-    let semantic (query: string) (limit: int) =
+    let semantic (ct: CancellationToken) (query: string) (limit: int) =
         checkedRoots ()
-        |> List.collect (fun root -> SemanticSearch.search cacheDir embedder progress files root query limit)
+        |> List.collect (fun root -> SemanticSearch.searchWith ct cacheDir embedder progress files root query limit)
         |> HybridSearch.mergeByScore limit
 
     new(options: FerretOptions) =
@@ -113,8 +118,17 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
         | Files(onnx, _) -> Path.GetDirectoryName onnx
         | Bundled -> "bundled"
 
-    /// `EnsureModel` without blocking the caller.
-    member this.EnsureModelAsync() : Task<string> = Task.Run(fun () -> this.EnsureModel())
+    /// `EnsureModel` without blocking the caller: the download is asynchronous I/O. Cancelling `ct` stops
+    /// it with `OperationCanceledException` and leaves no partial file.
+    member _.EnsureModelAsync(ct: CancellationToken) : Task<string> =
+        task {
+            match! modelSourceAsync ct with
+            | Files(onnx, _) -> return Path.GetDirectoryName onnx
+            | Bundled -> return "bundled"
+        }
+
+    /// `EnsureModelAsync` that cannot be cancelled.
+    member this.EnsureModelAsync() : Task<string> = this.EnsureModelAsync CancellationToken.None
 
     /// Regex search like `rg`: the matching lines of every file under the roots, in file order, honouring
     /// ignore files. `options` sets case, fixed-string and whole-word matching; use `MatchOptions.defaults`
@@ -136,14 +150,25 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     member this.Grep(pattern: string) : Hit seq = this.Grep(pattern, MatchOptions.defaults)
 
     /// Ranks the files under the roots against `query`, best first, at most `limit`, each with excerpts.
-    member _.Search(query: string, limit: int, mode: SearchMode) : ScoredDoc list =
+    /// Cancelling `ct` stops it with `OperationCanceledException`; a cancelled run leaves the saved
+    /// indexes as they were.
+    member _.Search(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : ScoredDoc list =
         if limit < 1 then invalidArg (nameof limit) "limit must be at least 1"
         match mode with
-        | Lexical -> lexical query limit
-        | Semantic -> semantic query limit
+        | Lexical -> lexical ct query limit
+        | Semantic -> semantic ct query limit
         | Hybrid ->
             let depth = HybridSearch.ArmDepth
-            HybridSearch.fuse HybridSearch.DefaultK 1.0 1.0 limit (lexical query depth) (semantic query depth)
+            let lexicalHits = lexical ct query depth
+            HybridSearch.fuse HybridSearch.DefaultK 1.0 1.0 limit lexicalHits (semantic ct query depth)
+
+    /// `Search` that cannot be cancelled.
+    member this.Search(query: string, limit: int, mode: SearchMode) : ScoredDoc list =
+        this.Search(query, limit, mode, CancellationToken.None)
+
+    /// `Search` in the default mode.
+    member this.Search(query: string, limit: int, ct: CancellationToken) : ScoredDoc list =
+        this.Search(query, limit, options.DefaultMode, ct)
 
     /// `Search` in the default mode.
     member this.Search(query: string, limit: int) : ScoredDoc list = this.Search(query, limit, options.DefaultMode)
@@ -151,12 +176,22 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     /// `Search` in the default mode, returning at most 10 files.
     member this.Search(query: string) : ScoredDoc list = this.Search(query, 10)
 
+    /// `Search` on a thread-pool thread, so the caller is not blocked. The work is CPU-bound, not
+    /// asynchronous I/O: it occupies a pool thread until it finishes or `ct` is cancelled.
+    member this.SearchAsync(query: string, limit: int, mode: SearchMode, ct: CancellationToken) : Task<ScoredDoc list> =
+        Task.Run((fun () -> this.Search(query, limit, mode, ct)), ct)
+
+    /// `SearchAsync` in the default mode.
+    member this.SearchAsync(query: string, limit: int, ct: CancellationToken) : Task<ScoredDoc list> =
+        this.SearchAsync(query, limit, options.DefaultMode, ct)
+
     /// Builds or updates the index for `mode` without searching, so the first search is fast. `Hybrid` builds
-    /// both. Returns the number of files indexed (for `Hybrid`, in the lexical index).
-    member _.BuildIndex(mode: SearchMode) : int =
+    /// both. Returns the number of files indexed (for `Hybrid`, in the lexical index). Cancelling `ct` stops
+    /// it with `OperationCanceledException`; a cancelled run leaves the saved indexes as they were.
+    member _.BuildIndex(mode: SearchMode, ct: CancellationToken) : int =
         let roots = checkedRoots ()
-        let lexicalCount () = Search.buildIndex index files roots
-        let semanticCount () = roots |> List.sumBy (SemanticSearch.build cacheDir embedder progress files)
+        let lexicalCount () = Search.buildIndexWith ct index files roots
+        let semanticCount () = roots |> List.sumBy (SemanticSearch.buildWith ct cacheDir embedder progress files)
         match mode with
         | Lexical -> lexicalCount ()
         | Semantic -> semanticCount ()
@@ -165,8 +200,19 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
             semanticCount () |> ignore
             count
 
+    /// `BuildIndex` that cannot be cancelled.
+    member this.BuildIndex(mode: SearchMode) : int = this.BuildIndex(mode, CancellationToken.None)
+
     /// `BuildIndex` in the default mode.
     member this.BuildIndex() : int = this.BuildIndex options.DefaultMode
+
+    /// `BuildIndex` on a thread-pool thread, so the caller is not blocked. The work is CPU-bound, not
+    /// asynchronous I/O: it occupies a pool thread until it finishes or `ct` is cancelled.
+    member this.BuildIndexAsync(mode: SearchMode, ct: CancellationToken) : Task<int> =
+        Task.Run((fun () -> this.BuildIndex(mode, ct)), ct)
+
+    /// `BuildIndexAsync` in the default mode.
+    member this.BuildIndexAsync(ct: CancellationToken) : Task<int> = this.BuildIndexAsync(options.DefaultMode, ct)
 
     /// Deletes the persisted indexes for `mode` (`Hybrid` deletes both). The model stays.
     member _.Clean(mode: SearchMode) : unit =

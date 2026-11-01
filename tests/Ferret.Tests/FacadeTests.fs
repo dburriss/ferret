@@ -2,6 +2,10 @@ module Ferret.Tests.FacadeTests
 
 open System
 open System.IO
+open System.Net
+open System.Net.Sockets
+open System.Threading
+open System.Threading.Tasks
 open Xunit
 open Ferret
 open Ferret.Domain
@@ -134,3 +138,69 @@ let ``a failed download names the model url`` () =
         use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, ModelUrl = "http://127.0.0.1:1/m"))
         let ex = Assert.Throws<Semantic.ModelUnavailable>(fun () -> ferret.EnsureModel() |> ignore)
         Assert.Contains("http://127.0.0.1:1/m", ex.Data0))
+
+let private cancelled =
+    let source = new CancellationTokenSource()
+    source.Cancel()
+    source.Token
+
+[<Fact>]
+let ``a cancelled token stops a lexical search`` () =
+    withTree tree (fun root cache ->
+        use ferret = client root cache
+        Assert.Throws<OperationCanceledException>(fun () -> ferret.Search("apple", 10, Lexical, cancelled) |> ignore) |> ignore
+        use direct = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, UseIndex = false))
+        Assert.Throws<OperationCanceledException>(fun () -> direct.Search("apple", 10, Lexical, cancelled) |> ignore) |> ignore)
+
+[<Fact>]
+let ``a cancelled build leaves no index behind`` () =
+    withTree tree (fun root cache ->
+        use ferret = client root cache
+        Assert.Throws<OperationCanceledException>(fun () -> ferret.BuildIndex(Lexical, cancelled) |> ignore) |> ignore
+        Assert.False(File.Exists(Path.Combine(cache, "lexical.idx")))
+        Assert.Equal(2, ferret.BuildIndex Lexical))
+
+[<Fact>]
+let ``an uncancelled token gives the same results as none`` () =
+    withTree tree (fun root cache ->
+        use ferret = client root cache
+        Assert.Equal<ScoredDoc list>(ferret.Search("apple", 10), ferret.Search("apple", 10, CancellationToken.None)))
+
+[<Fact>]
+let ``the async search and build run and honour cancellation`` () =
+    withTree tree (fun root cache ->
+        use ferret = client root cache
+        Assert.Equal(2, ferret.BuildIndexAsync(Lexical, CancellationToken.None).Result)
+        Assert.Equal<string list>([ Path.Combine(root, "apple.txt") ], ferret.SearchAsync("apple", 10, CancellationToken.None).Result |> List.map _.File)
+        let search = ferret.SearchAsync("apple", 10, cancelled)
+        Assert.ThrowsAny<OperationCanceledException>(fun () -> search.GetAwaiter().GetResult() |> ignore) |> ignore
+        let build = ferret.BuildIndexAsync(Lexical, cancelled)
+        Assert.ThrowsAny<OperationCanceledException>(fun () -> build.GetAwaiter().GetResult() |> ignore) |> ignore)
+
+let private noTempFiles (cache: string) =
+    let models = Path.Combine(cache, "models")
+    Assert.True(not (Directory.Exists models) || Directory.GetFiles(models, "*.tmp", SearchOption.AllDirectories).Length = 0)
+
+[<Fact>]
+let ``a cancelled model download is a cancellation, not a missing model`` () =
+    withTree tree (fun root cache ->
+        use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, ModelUrl = "http://127.0.0.1:1/m"))
+        let download = ferret.EnsureModelAsync cancelled
+        Assert.ThrowsAny<OperationCanceledException>(fun () -> download.GetAwaiter().GetResult() |> ignore) |> ignore
+        noTempFiles cache)
+
+[<Fact>]
+let ``cancelling a stalled model download stops it`` () =
+    withTree tree (fun root cache ->
+        // A mirror that accepts the connection and never answers.
+        let listener = new TcpListener(IPAddress.Loopback, 0)
+        listener.Start()
+        try
+            let url = $"http://127.0.0.1:{(listener.LocalEndpoint :?> IPEndPoint).Port}/m"
+            use ferret = new Ferret.FerretClient(FerretOptions(Roots = [| root |], CacheDir = cache, ModelUrl = url))
+            use source = new CancellationTokenSource(TimeSpan.FromMilliseconds 300.0)
+            let download = ferret.EnsureModelAsync source.Token
+            Assert.ThrowsAny<OperationCanceledException>(fun () -> download.GetAwaiter().GetResult() |> ignore) |> ignore
+            noTempFiles cache
+        finally
+            listener.Stop())
