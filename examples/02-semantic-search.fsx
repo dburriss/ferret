@@ -13,7 +13,7 @@ let folder = if args.Length > 1 then args[1] else Path.GetFullPath(Path.Combine(
 let options = FerretOptions(Roots = [| folder |], Progress = Action<string>(eprintfn "%s"))
 let ferret = new FerretClient(options)
 
-for doc in ferret.Search(question, 5, Semantic) do
+for doc in ferret.Search(question, 5, Semantic).Docs do
     printfn "%.3f %s" doc.Score doc.File
     // For semantic search the excerpt is the best-matching chunk.
     doc.Excerpts |> List.tryHead |> Option.iter (fun line -> printfn "    %d: %s" line.LineNumber (line.Line.Trim()))

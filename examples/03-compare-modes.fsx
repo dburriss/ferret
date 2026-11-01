@@ -12,8 +12,8 @@ let folder = if args.Length > 1 then args[1] else Path.GetFullPath(Path.Combine(
 let options = FerretOptions(Roots = [| folder |], Progress = Action<string>(eprintfn "%s"))
 let ferret = new FerretClient(options)
 
-let top mode =
-    ferret.Search(query, 5, mode) |> List.map (fun doc -> Path.GetRelativePath(folder, doc.File))
+let top (mode: SearchMode) =
+    ferret.Search(query, 5, mode).Docs |> Array.map (fun doc -> Path.GetRelativePath(folder, doc.File)) |> List.ofArray
 
 let columns = [ "lexical", top Lexical; "semantic", top Semantic; "hybrid", top Hybrid ]
 

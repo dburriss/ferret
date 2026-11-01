@@ -13,7 +13,7 @@ let folder = if args.Length > 1 then args[1] else Path.GetFullPath(Path.Combine(
 let ferret = new FerretClient(FerretOptions(Roots = [| folder |]))
 
 // A bounded result: at most 5 files, and each file carries a few excerpt lines.
-for doc in ferret.Search(query, 5, Lexical) do
+for doc in ferret.Search(query, 5, Lexical).Docs do
     for line in doc.Excerpts do
         JsonSerializer.Serialize(
             {| file = doc.File

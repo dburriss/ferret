@@ -11,7 +11,7 @@ let folder = if args.Length > 1 then args[1] else Path.GetFullPath(Path.Combine(
 let ferret = new FerretClient(FerretOptions(Roots = [| folder |]))
 // In a program, write `use ferret = ...` so the client is disposed.
 
-for doc in ferret.Search(query, 5, Lexical) do
+for doc in ferret.Search(query, 5, Lexical).Docs do
     printfn "%.3f %s" doc.Score doc.File
     for line in doc.Excerpts do
         printfn "    %d: %s" line.LineNumber (line.Line.Trim())
