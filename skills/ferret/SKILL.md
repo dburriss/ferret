@@ -1,6 +1,6 @@
 ---
 name: ferret
-description: How to use Ferret, the ripgrep-compatible search tool with ranked lexical (BM25), semantic and hybrid search, both the `ferret` CLI and the `Ferret` .NET/F# library (FerretClient). Use this whenever the user runs or mentions `ferret`, `ferret --lex/--sem/--hybrid`, `--jsonl`, `.ferretignore`, FerretClient, Ferret.Core or Ferret.Semantic, or wants to search docs/notes/code by keyword relevance or meaning, rank files for an agent or script, pre-build search indexes, run semantic search offline, or embed ranked search in an F#/C# program, even if they don't name Ferret explicitly but the project has it installed.
+description: How to use Ferret, the ripgrep-compatible search tool with ranked lexical (BM25), semantic and hybrid search, both the `ferret` CLI and the `Ferret` .NET/F# library (FerretClient). Use this whenever the user runs or mentions `ferret`, `ferret --lex/--sem/--hybrid`, `--jsonl`, `.ferretignore`, FerretClient, or wants to search docs/notes/code by keyword relevance or meaning, rank files for an agent or script, pre-build search indexes, run semantic search offline, or embed ranked search in an F#/C# program, even if they don't name Ferret explicitly but the project has it installed.
 ---
 
 # Ferret
@@ -22,7 +22,7 @@ Read the reference that matches the task before answering; each holds details th
 Two packages, so pick by what the user is doing:
 
 - **Ferret.Tool**, the `ferret` command: `dotnet tool install --global Ferret.Tool` (check with `ferret --version`). Needs the .NET SDK.
-- **Ferret**, the library for .NET code: `dotnet add package Ferret`. Lexical-only consumers can reference `Ferret.Core` instead to skip ONNX Runtime and the model.
+- **Ferret**, the library for .NET code: `dotnet add package Ferret`. It is the only library package: it bundles the core and semantic code and depends on ONNX Runtime, but does not ship the model (it downloads on first semantic use).
 
 A project that calls `FerretClient` does not need the tool, and the tool does not need the library. They share the same cache directory.
 

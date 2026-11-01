@@ -1,6 +1,6 @@
 # Library API reference
 
-Package `Ferret` (namespace `Ferret`). `Ferret.Core` and `Ferret.Semantic` are its dependencies. Lexical-only consumers can use `Ferret.Core` and avoid the ONNX runtime and model.
+Package `Ferret` (namespace `Ferret`) is the only library package. It bundles `Ferret.Core` and `Ferret.Semantic` as internal projects and depends on ONNX Runtime, so lexical-only use still carries that dependency. The model is not shipped: it downloads on first semantic use.
 
 ## FerretClient
 

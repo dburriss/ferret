@@ -25,4 +25,4 @@ Pre-building moves the cost, it does not remove it. The first search without it 
 
 ## The model
 
-The semantic model (`bge-small-en-v1.5`, int8, about 32 MB) is fixed for now. It is downloaded on first use rather than shipped in the package so that lexical-only users do not carry it. `Ferret.Semantic` is a separate package for the same reason.
+The semantic model (`bge-small-en-v1.5`, int8, about 32 MB) is fixed for now. It is downloaded on first use rather than shipped in the package, so lexical-only users never fetch it. The `Ferret` package still depends on ONNX Runtime; lexical search does not load it.

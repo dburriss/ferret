@@ -1,6 +1,6 @@
 # Ferret library reference
 
-Package `Ferret` (namespace `Ferret`); `Ferret.Core` and `Ferret.Semantic` are its dependencies. Lexical-only consumers can use `Ferret.Core` and avoid the ONNX runtime and model. Repo docs: `docs/reference/library.md`, runnable scripts in `examples/` (`01-lexical-search.fsx` to `07-jsonl-for-agents.fsx`; outside the repo replace `_ferret.fsx` with `#r "nuget: Ferret, *-*"`).
+Package `Ferret` (namespace `Ferret`) is the only library package. It bundles `Ferret.Core` and `Ferret.Semantic` as internal projects and depends on ONNX Runtime, so lexical-only use still carries that dependency. The model is not shipped: it downloads on first semantic use. Repo docs: `docs/reference/library.md`, runnable scripts in `examples/` (`01-lexical-search.fsx` to `07-jsonl-for-agents.fsx`; outside the repo replace `_ferret.fsx` with `#r "nuget: Ferret, *-*"`).
 
 Setup: `dotnet add package Ferret`.
 
