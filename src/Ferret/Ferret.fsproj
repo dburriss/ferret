@@ -6,13 +6,14 @@
     <!-- Not "Ferret": the CLI assembly is "ferret", and the two names collide on case-insensitive file systems. -->
     <AssemblyName>Ferret.Client</AssemblyName>
     <Description>Lexical (BM25), semantic and hybrid file search for .NET: point it at some folders, build an index and search, without knowing how it works inside.</Description>
+    <PackageReadmeFile>NUGET.md</PackageReadmeFile>
     <!-- Ferret.Core and Ferret.Semantic ship inside this package (see IncludeBundledProjects). -->
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBundledProjects</TargetsForTfmSpecificBuildOutput>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="NUGET.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

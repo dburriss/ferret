@@ -2,6 +2,16 @@
 
 Search files by keyword, meaning or both. Ferret is a drop-in `rg` for plain searches, and adds ranked lexical (BM25), semantic and hybrid search with a persisted index.
 
+## What is Ferret?
+
+`grep` and `rg` return every match in file order. On a folder of docs or notes, the file you want can sit below a README that merely quotes your query. Ferret ranks whole files instead, so the best one comes first, and it caps the output so a person or an LLM agent can take the top few results.
+
+- **Lexical (BM25)**: exact and predictable. Files with more and rarer query terms rank higher.
+- **Semantic**: finds files by meaning, so "what happens when a request fails" matches a page about retries. Uses a small local model, with no service to run.
+- **Hybrid**: fuses both rankings. It beat either alone on the F# docs benchmark.
+
+Plain `ferret pattern` behaves like `rg`, so it will not surprise anyone used to it. Ranked modes are opt-in flags. Indexes are a disposable cache that rebuilds on demand, and everything works offline once the model is downloaded.
+
 Two packages:
 
 - **Ferret.Tool**: the `ferret` command.
@@ -34,6 +44,10 @@ for hit in ferret.Search("how do I install it", 10, Hybrid) do
 ```
 
 `FerretOptions` sets the roots, the cache directory, an existing model directory, the default mode (`Lexical`, `Semantic` or `Hybrid`) and a progress callback. The cache is shared with the `ferret` command.
+
+## Documentation
+
+See [docs/index.md](docs/index.md): tutorials, how-to guides, reference and explanation.
 
 ## License
 

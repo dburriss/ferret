@@ -7,6 +7,7 @@
     <ToolCommandName>ferret</ToolCommandName>
     <PackageId>Ferret.Tool</PackageId>
     <Description>ferret: a ripgrep-compatible search command with ranked lexical (BM25), semantic and hybrid search.</Description>
+    <PackageReadmeFile>NUGET.md</PackageReadmeFile>
     <!-- Single-file publish bundles Argu, ONNX Runtime and reflection-based code, so trimming is unsafe. -->
     <PublishTrimmed>false</PublishTrimmed>
     <AssemblyName>ferret</AssemblyName>
@@ -23,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="NUGET.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
