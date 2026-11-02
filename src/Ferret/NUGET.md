@@ -14,11 +14,11 @@ dotnet add package Ferret
 open Ferret
 
 use ferret = new FerretClient(FerretOptions(Roots = [| "docs" |]))
-for doc in ferret.Search("how do I install it", 10, Hybrid) do
+for doc in ferret.Search("how do I install it", 10, Hybrid).Docs do
     printfn "%.3f %s" doc.Score doc.File
 ```
 
-`Search` takes `Lexical`, `Semantic` or `Hybrid`. Semantic and hybrid use a small local model that downloads on first use; `EnsureModel()` fetches it ahead of time. `BuildIndex` indexes ahead of the first search, `Search` and `BuildIndex` take a `CancellationToken` and have `SearchAsync`/`BuildIndexAsync` variants, and `Grep` does regex search like `rg`. `FerretOptions` sets the roots, cache directory, model directory, default mode, offline mode, extra ignore patterns and a progress callback.
+`Search` takes `Lexical`, `Semantic` or `Hybrid` and returns a `SearchResult`: the ranked `Docs` and a `Truncated` flag that is true when more files ranked than the limit. Semantic and hybrid use a small local model that downloads on first use; `EnsureModel()` fetches it ahead of time. `BuildIndex` indexes ahead of the first search, `Search` and `BuildIndex` take a `CancellationToken` and have `SearchAsync`/`BuildIndexAsync` variants, and `Grep` does regex search like `rg`. `FerretOptions` sets the roots, cache directory, model directory, default mode, offline mode, extra ignore patterns and a progress callback.
 
 The cache is shared with the `ferret` command ([Ferret.Tool](https://www.nuget.org/packages/Ferret.Tool)).
 
