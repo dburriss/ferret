@@ -108,7 +108,7 @@ type Ranker = Query -> Candidate list -> ScoredDoc list
 - Disposable. Built on first use, rebuilt when the index version changes.
 - Built for lexical: entries are per file and keyed by full path, so ignore rules are applied by the walk on every run rather than baked into the cache key. The version is `FormatVersion * 1000 + NormaliserVersion`.
 - Incremental by file hash where feasible.
-- The semantic index is synced on query like the lexical one (only new or changed files are embedded), with one file per search root. `--index --sem` pre-builds it.
+- The semantic index is synced on query like the lexical one (only new or changed files are embedded), with one file per search root (the lexical index is stored the same way). `--index --sem` pre-builds it.
 
 ### Packages
 

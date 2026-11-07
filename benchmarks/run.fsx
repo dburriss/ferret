@@ -105,19 +105,20 @@ let lexCorpora =
 let lexResults =
     [ for corpus, dir, queries in lexCorpora do
         let cache = Path.Combine(Path.GetTempPath(), $"ferret-bench-{Guid.NewGuid():N}")
-        let indexFile = Path.Combine(cache, "lexical.idx")
+        // One index file per search root under <cache>/lexical/; each corpus is searched from one root.
+        let lexDir = Path.Combine(cache, "lexical")
         try
             for query in queries do
                 let ferret extra = $"dotnet {quote ferretDll} --lex {extra}{quote query}"
                 let timings =
                     hyperfine $"{corpus} | --lex {query}" dir [ "FERRET_CACHE_DIR", cache ]
                         [ "per-run", ferret "--no-index ", None
-                          "index-build", ferret "", Some("rm -f " + quote indexFile)
+                          "index-build", ferret "", Some("rm -rf " + quote lexDir)
                           "index-warm", ferret "", None ]
                 yield
                     {| corpus = corpus
                        query = query
-                       indexBytes = FileInfo(indexFile).Length
+                       indexBytes = (Directory.GetFiles lexDir |> Array.sumBy (fun f -> FileInfo(f).Length))
                        timings = timings |}
         finally
             if Directory.Exists cache then Directory.Delete(cache, true) ]
@@ -182,8 +183,8 @@ let semResults =
         for mode in [ "--sem"; "--hybrid" ] do
             let cache = Path.Combine(Path.GetTempPath(), $"ferret-bench-{Guid.NewGuid():N}")
             let env = [ "FERRET_CACHE_DIR", cache; "FERRET_MODEL_DIR", ferretModelDir; "FERRET_OFFLINE", "1" ]
-            let semDir, lexFile = Path.Combine(cache, "semantic"), Path.Combine(cache, "lexical.idx")
-            let clearFerret = "rm -rf " + quote semDir + " " + quote lexFile
+            let semDir, lexDir = Path.Combine(cache, "semantic"), Path.Combine(cache, "lexical")
+            let clearFerret = "rm -rf " + quote semDir + " " + quote lexDir
             let ck = Path.Combine(dir, ".ck")
             try
                 let mutable first = true

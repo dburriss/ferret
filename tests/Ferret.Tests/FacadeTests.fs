@@ -56,8 +56,11 @@ let ``building the index creates the lexical index file and cleaning removes it`
     withTree tree (fun root cache ->
         use ferret = client root cache
         Assert.Equal(2, ferret.BuildIndex Lexical)
-        Assert.True(File.Exists(Path.Combine(cache, "lexical.idx")))
+        Assert.True(File.Exists(DiskIndexStore.pathFor cache [ root ]))
+        // An index left by an older version goes too.
+        File.WriteAllText(Path.Combine(cache, "lexical.idx"), "old")
         ferret.Clean Lexical
+        Assert.False(Directory.Exists(Path.Combine(cache, "lexical")))
         Assert.False(File.Exists(Path.Combine(cache, "lexical.idx"))))
 
 [<Fact>]

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The lexical index is now one file per search root, `lexical/<hash>.idx` in the cache directory, instead of a single `lexical.idx` for every tree. Searching one project no longer loads or rewrites another's entries. Existing indexes are rebuilt on first use; `--clean` (or `FerretClient.Clean`) removes the old `lexical.idx`.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

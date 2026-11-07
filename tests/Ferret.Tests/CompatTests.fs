@@ -54,7 +54,7 @@ let private runCase (case: string) =
         let out = new StringWriter()
         let deps =
             { Files = DiskFileSource()
-              Index = Ferret.Index.MemoryIndexStore()
+              Index = (let store = Ferret.Index.MemoryIndexStore() in fun _ -> store :> Ferret.Index.IIndexStore)
               Out = out
               Err = new StringWriter()
               StdinIsReadable = false

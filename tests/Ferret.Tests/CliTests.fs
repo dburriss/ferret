@@ -45,7 +45,7 @@ let private runWith (stdin: string list option) (args: GrepArgs) =
         { Files = withStdin (Option.defaultValue [] stdin)
           Out = out
           Err = err
-          Index = Ferret.Index.MemoryIndexStore()
+          Index = (let store = Ferret.Index.MemoryIndexStore() in fun _ -> store :> Ferret.Index.IIndexStore)
           StdinIsReadable = Option.isSome stdin
           IsDebug = false }
     let code = GrepCli.run deps args
@@ -225,7 +225,7 @@ let ``a dash path reads stdin`` () =
 let ``a dash path reads stdin even when stdin is not detected as piped`` () =
     let disk = withStdin piped
     let out = new StringWriter()
-    let deps = { Files = disk; Index = Ferret.Index.MemoryIndexStore(); Out = out; Err = new StringWriter(); StdinIsReadable = false; IsDebug = false }
+    let deps = { Files = disk; Index = (let store = Ferret.Index.MemoryIndexStore() in fun _ -> store :> Ferret.Index.IIndexStore); Out = out; Err = new StringWriter(); StdinIsReadable = false; IsDebug = false }
     Assert.Equal(0, GrepCli.run deps (grep "hello" [ "-" ]))
     Assert.Equal("hello stdin\n", out.ToString().Replace("\r\n", "\n"))
 
@@ -284,7 +284,7 @@ let private runRanked (args: RankedCli.RankedArgs) =
     let err = new StringWriter()
     let deps =
         { Files = withStdin []
-          Index = Ferret.Index.MemoryIndexStore()
+          Index = (let store = Ferret.Index.MemoryIndexStore() in fun _ -> store :> Ferret.Index.IIndexStore)
           Out = out
           Err = err
           StdinIsReadable = false
@@ -437,7 +437,7 @@ let private runMaintenance (args: MaintenanceCli.MaintenanceArgs) (store: Ferret
         { Files = DiskFileSource()
           Out = out
           Err = err
-          Index = store
+          Index = (fun _ -> store :> Ferret.Index.IIndexStore)
           StdinIsReadable = false
           IsDebug = false }
     let code = MaintenanceCli.run deps args

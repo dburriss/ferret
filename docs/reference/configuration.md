@@ -19,7 +19,7 @@ First match wins:
 
 | Path | Contents |
 |---|---|
-| `lexical.idx` | Lexical index for all searched files. |
+| `lexical/<hash-of-roots>.idx` | Lexical index for one search (its roots). |
 | `semantic/<hash-of-root>.idx` | Semantic index for one search root. |
 | `models/<model-id>/` | Downloaded model and vocabulary. |
 

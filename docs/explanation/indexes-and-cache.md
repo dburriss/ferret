@@ -6,7 +6,7 @@ Ferret keeps indexes in a cache directory, not next to your files. Nothing in th
 
 ## Lexical index
 
-One file, `lexical.idx`, holds for each file its token count, term frequencies and the terms in boostable fields. Each entry is keyed by full path and stamped with size and modified time.
+One index per search root (`lexical/<hash-of-root>.idx`; a search over several roots gets one index for that set), so projects never overwrite each other and load cost is bounded by the tree searched. The file holds for each file its token count, term frequencies and the terms in boostable fields. Each entry is keyed by full path and stamped with size and modified time.
 
 On each search Ferret walks the files, reuses entries whose stamp is unchanged, re-reads new or changed files, drops entries for files that are gone, and saves only if something changed. Results are identical to `--no-index`; the index saves tokenizing, not correctness.
 

@@ -9,8 +9,8 @@ open Ferret.FileSource
 /// Adapters built once in `main` and passed to every command.
 type AdapterDeps =
     { Files: IFileSource
-      /// Persisted lexical index, used by `--lex`.
-      Index: Ferret.Index.IIndexStore
+      /// Persisted lexical index for a search over the given roots, used by `--lex`.
+      Index: string list -> Ferret.Index.IIndexStore
       Out: TextWriter
       Err: TextWriter
       /// True when stdin is a pipe, socket or file to search, not a terminal or `/dev/null`.
@@ -109,11 +109,15 @@ module AdapterDeps =
                 UseIndex = useIndex,
                 Progress = Action<string>(fun m -> deps.Err.WriteLine $"ferret: {m}")
             )
-        new Ferret.FerretClient(options, deps.Files, deps.Index)
+        new Ferret.FerretClient(options, deps.Files, deps.Index roots)
 
     let create (isDebug: bool) : AdapterDeps =
         { Files = DiskFileSource()
-          Index = Ferret.DiskIndexStore.DiskIndexStore(Ferret.DiskIndexStore.defaultPath ())
+          Index =
+            fun roots ->
+                Ferret.DiskIndexStore.DiskIndexStore(
+                    Ferret.DiskIndexStore.pathFor (Ferret.DiskIndexStore.defaultCacheDir ()) roots
+                )
           Out = new StreamWriter(Console.OpenStandardOutput(), Text.UTF8Encoding(false), AutoFlush = false)
           Err = Console.Error
           StdinIsReadable = stdinIsReadable ()

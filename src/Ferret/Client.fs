@@ -52,7 +52,7 @@ type FerretOptions() =
 ///
 /// Semantic and hybrid searches build or update their index as needed.
 type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore) =
-    static let defaultCacheDir () = Path.GetDirectoryName(DiskIndexStore.defaultPath ())
+    static let defaultCacheDir () = DiskIndexStore.defaultCacheDir ()
 
     let cacheDir = if String.IsNullOrEmpty options.CacheDir then defaultCacheDir () else options.CacheDir
     let roots = List.ofArray options.Roots
@@ -92,6 +92,10 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
         else
             Search.searchWith ct Ranking.bm25 files (checkedRoots ()) query limit
 
+    let clearLexical () =
+        index.Clear()
+        DiskIndexStore.clearAll cacheDir
+
     let semantic (ct: CancellationToken) (query: string) (limit: int) =
         checkedRoots ()
         |> List.collect (fun root -> SemanticSearch.searchWith ct cacheDir embedder progress files root query limit)
@@ -99,7 +103,7 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
 
     new(options: FerretOptions) =
         let cache = if String.IsNullOrEmpty options.CacheDir then defaultCacheDir () else options.CacheDir
-        new FerretClient(options, DiskFileSource(List.ofArray (if isNull options.IgnorePatterns then [||] else options.IgnorePatterns)), Ferret.DiskIndexStore.DiskIndexStore(Path.Combine(cache, "lexical.idx")))
+        new FerretClient(options, DiskFileSource(List.ofArray (if isNull options.IgnorePatterns then [||] else options.IgnorePatterns)), Ferret.DiskIndexStore.DiskIndexStore(Ferret.DiskIndexStore.pathFor cache (List.ofArray options.Roots)))
 
     new() = new FerretClient(FerretOptions())
 
@@ -219,10 +223,10 @@ type FerretClient(options: FerretOptions, files: IFileSource, index: IIndexStore
     /// Deletes the persisted indexes for `mode` (`Hybrid` deletes both). The model stays.
     member _.Clean(mode: SearchMode) : unit =
         match mode with
-        | Lexical -> index.Clear()
+        | Lexical -> clearLexical ()
         | Semantic -> VectorStore.clear cacheDir
         | Hybrid ->
-            index.Clear()
+            clearLexical ()
             VectorStore.clear cacheDir
 
     interface IDisposable with

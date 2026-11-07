@@ -361,3 +361,38 @@ let ``a cleared cache is rebuilt from every file`` () =
         (store :> IIndexStore).Clear()
         Search.buildIndex store files [ d ] |> ignore
         Assert.Equal(2, reads.Value))
+
+[<Fact>]
+let ``the index file depends on the set of roots, not their order or spelling`` () =
+    let cache = Path.Combine(Path.GetTempPath(), "ferret-cache")
+    let a, b = Path.Combine(cache, "a"), Path.Combine(cache, "b")
+    let file roots = DiskIndexStore.pathFor cache roots
+    Assert.Equal(file [ a; b ], file [ b; a; a ])
+    Assert.Equal(file [ a ], file [ Path.Combine(a, ".", "") ])
+    Assert.NotEqual<string>(file [ a ], file [ b ])
+    Assert.NotEqual<string>(file [ a ], file [ a; b ])
+    Assert.Equal(Path.Combine(cache, "lexical"), Path.GetDirectoryName(file [ a ]))
+
+[<Fact>]
+let ``indexes for different roots are separate files and clearAll removes them and the old single file`` () =
+    withTree [ "one/a.txt", "apple\n"; "two/b.txt", "banana\n" ] (fun d ->
+        let cache = Path.Combine(d, "cache")
+        let one, two = Path.Combine(d, "one"), Path.Combine(d, "two")
+        let storeFor root = DiskIndexStore.DiskIndexStore(DiskIndexStore.pathFor cache [ root ]) :> IIndexStore
+        Search.buildIndex (storeFor one) disk [ one ] |> ignore
+        Search.buildIndex (storeFor two) disk [ two ] |> ignore
+        Assert.Equal(2, Directory.GetFiles(Path.Combine(cache, "lexical")).Length)
+        // Each holds only its own tree, so searching one never loads the other.
+        Assert.Equal(1, (storeFor one).Load().Value.Entries.Count)
+        // Re-syncing one root leaves the other's file untouched.
+        let before = File.GetLastWriteTimeUtc(DiskIndexStore.pathFor cache [ two ])
+        File.WriteAllText(Path.Combine(one, "c.txt"), "cherry\n")
+        Search.buildIndex (storeFor one) disk [ one ] |> ignore
+        Assert.Equal(2, (storeFor one).Load().Value.Entries.Count)
+        Assert.Equal(before, File.GetLastWriteTimeUtc(DiskIndexStore.pathFor cache [ two ]))
+        File.WriteAllText(Path.Combine(cache, "lexical.idx"), "old")
+        DiskIndexStore.clearAll cache
+        Assert.False(Directory.Exists(Path.Combine(cache, "lexical")))
+        Assert.False(File.Exists(Path.Combine(cache, "lexical.idx")))
+        // Nothing to remove is not an error.
+        DiskIndexStore.clearAll cache)

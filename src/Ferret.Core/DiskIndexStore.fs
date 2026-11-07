@@ -162,20 +162,41 @@ let private readFor (buf: byte[]) (terms: string list) : Snapshot option =
 
 /// Where the cache lives by default: `$FERRET_CACHE_DIR`, else `$XDG_CACHE_HOME/ferret`, else
 /// the platform's per-user cache directory.
-let defaultPath () : string =
+let defaultCacheDir () : string =
     let env name =
         match Environment.GetEnvironmentVariable name with
         | null
         | "" -> None
         | value -> Some value
-    let dir =
-        match env "FERRET_CACHE_DIR", env "XDG_CACHE_HOME" with
-        | Some dir, _ -> dir
-        | None, Some xdg -> Path.Combine(xdg, "ferret")
-        | None, None when OperatingSystem.IsWindows() ->
-            Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "ferret")
-        | None, None -> Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".cache", "ferret")
-    Path.Combine(dir, "lexical.idx")
+    match env "FERRET_CACHE_DIR", env "XDG_CACHE_HOME" with
+    | Some dir, _ -> dir
+    | None, Some xdg -> Path.Combine(xdg, "ferret")
+    | None, None when OperatingSystem.IsWindows() ->
+        Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "ferret")
+    | None, None -> Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".cache", "ferret")
+
+let private lexicalDir (cacheDir: string) = Path.Combine(cacheDir, "lexical")
+
+/// The index file for a search over `roots` (any way of naming them): `<cache dir>/lexical/<hash>.idx`,
+/// named by a hash of the roots' sorted full paths. One root gets its own file, so projects never
+/// overwrite each other and load cost is bounded by the tree searched.
+let pathFor (cacheDir: string) (roots: string list) : string =
+    let full =
+        roots
+        |> List.map (fun r -> Path.TrimEndingDirectorySeparator(Path.GetFullPath(if r = "" then "." else r)))
+        |> List.distinct
+        |> List.sort
+    let hash = Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(String.Join("\n", full)))
+    Path.Combine(lexicalDir cacheDir, Convert.ToHexString(hash, 0, 8).ToLowerInvariant() + ".idx")
+
+/// Removes every lexical index, including the single `lexical.idx` older versions kept.
+let clearAll (cacheDir: string) : unit =
+    try
+        let dir = lexicalDir cacheDir
+        if Directory.Exists dir then Directory.Delete(dir, true)
+        File.Delete(Path.Combine(cacheDir, "lexical.idx"))
+    with :? IOException | :? UnauthorizedAccessException ->
+        ()
 
 /// Stores the cache in one binary file. A missing, truncated, corrupt or other-version file loads
 /// as `None` and is replaced on the next save. Saves go through a temp file and a move, so
