@@ -1,11 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <Version>0.3.0</Version>
-    <PackageReleaseNotes>`FerretOptions.ModelUrl` and `FERRET_MODEL_URL` to download the model from a mirror (checksums still verified).
-`FerretClient.IsModelAvailable`, a non-throwing check so a host can decide when to download the model.
-`CancellationToken` overloads of `FerretClient.Search` and `BuildIndex`, `SearchAsync` and `BuildIndexAsync`, and `EnsureModelAsync(ct)`. A cancelled run throws `OperationCanceledException` and leaves the saved indexes untouched; the model download is now asynchronous I/O and cancellable.
-Ctrl+C during `--index`, `--lex`, `--sem`, `--hybrid` or `--model download` now stops cleanly (exit 130).</PackageReleaseNotes>
+    <Version>0.4.0</Version>
+    <PackageReleaseNotes>The lexical index is now one file per search root, `lexical/&lt;hash&gt;.idx` in the cache directory, instead of a single `lexical.idx` for every tree. Searching one project no longer loads or rewrites another's entries. Existing indexes are rebuilt on first use; `--clean` (or `FerretClient.Clean`) removes the old `lexical.idx`.</PackageReleaseNotes>
     <!-- Flexi.Yaml needs at least this FSharp.Core; the SDK's implicit version is older. -->
     <FSharpCoreImplicitPackageVersion>10.1.403</FSharpCoreImplicitPackageVersion>
   </PropertyGroup>
